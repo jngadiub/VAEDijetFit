@@ -3,7 +3,7 @@
 ### 1-category bump hunt
 
 Run the 1-category s+b fit with injected signal of a chosen cross-section `--xsec`.Chose the region to fit with `--index` where 0=inclusive,
-1=accepted 2=rejected. The signal mass hypthesis can also be configured with `-M`. Name and path of signa/background h5 files can be set with `--qcd` and `--sig`. 
+1=accepted 2=rejected. The signal mass hypothesis can also be configured with `-M`. Name and path of signal/background h5 files can be set with `--qcd` and `--sig`. 
 
 ```
 python dijetfit.py --index {REGION} --xsec {XSEC} -M {MASS}
