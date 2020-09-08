@@ -33,7 +33,7 @@ python run_dijetfit.py 1
 ```
 
 This runs the scan for the 1-category bump hunt for both the inclusive and accepted samples. After that it runs the 2-category bump hunt. The cross
-section range can be changed in the script. The results are saved in txt files (they should be three). If you have run the full scan and you just
+section range and mass can be changed in the script. The results are saved in txt files (they should be three). If you have run the full scan and you just
 want to plot from the txt files then set first argument to 0:
 
 ```
