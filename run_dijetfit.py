@@ -55,7 +55,7 @@ def plotPValue(xsec_scan):
 	ys = array('d', [])
 	yp = array('d',[])
 
-	fin = open('results_accepted.txt')
+	fin = open('results_accepted.txt','r')
 	for l in fin.readlines():
  		l = l.split('\t')
  		yp.append(float(l[1]))
@@ -71,10 +71,10 @@ def plotPValue(xsec_scan):
 	gp.SetLineWidth(2)
 	gp.SetMarkerSize(1.)
 
-	ys2 = array('d', [])
+	ys2 = array('d',[])
 	yp2 = array('d',[])
 
-	fin = open('results_total.txt')
+	fin = open('results_total.txt','r')
 	for l in fin.readlines():
 		l = l.split('\t')
  		yp2.append(float(l[1]))
@@ -89,12 +89,13 @@ def plotPValue(xsec_scan):
 	gp2.SetLineWidth(2)
 	gp2.SetMarkerSize(1.)
 
-	ys3 = array('d', [])
+	ys3 = array('d',[])
 	yp3 = array('d',[])
 
-	fin = open('results_twoCatFit.txt')
+	fin = open('results_twoCatFit.txt','r')
 	for l in fin.readlines():
 		l = l.split('\t')
+		print float(l[1])
  		yp3.append(float(l[1]))
  		ys3.append(float(l[2]))
 	fin.close()
@@ -114,12 +115,12 @@ def plotPValue(xsec_scan):
 	 l.SetLineWidth(2)
 	 l.SetLineStyle(3)
 	 
-	bans = [ ROOT.TLatex(xmax*0.95,pvalues[i-1],("%i #sigma"%(i))) for i in range(1,7) ]
+	bans = [ ROOT.TLatex(xmax*0.93,pvalues[i-1],("%i #sigma"%(i))) for i in range(1,7) ]
 	for b in bans:
 	 b.SetTextSize(0.028)
 	 b.SetTextColor(2)
 
-	legend = ROOT.TLegend(0.7510112,0.7183362,0.8502143,0.919833)
+	legend = ROOT.TLegend(0.18,0.2183362,0.28,0.419833)
 	legend.SetTextSize(0.032)
 	legend.SetLineColor(0)
 	legend.SetShadowColor(0)
@@ -181,7 +182,7 @@ if __name__ == "__main__":
      
 	for x in xsec:
  
- 		cmd = 'python dijetfit.py --index {index} --xsec {xsec}'.format(index=index,xsec=x)
+ 		cmd = 'python dijetfit.py --index {index} --xsec {xsec} -M {mass}'.format(index=index,xsec=x,mass=mass)
  		print "Executing:",cmd
  		os.system(cmd)
  		
@@ -208,14 +209,15 @@ if __name__ == "__main__":
  
  for x in xsec:
  
- 	cmd = 'python dijetfit.py --index 2 --xsec {xsec} --twoCatFit'.format(xsec=x)
+ 	cmd = 'python dijetfit.py --index 2 --xsec {xsec} -M {mass} --twoCatFit'.format(xsec=x,mass=mass)
  	print "Executing:",cmd
  	os.system(cmd)
 
- 	cmd = 'python dijetfit.py --index 1 --xsec {xsec} --twoCatFit'.format(xsec=x)
+ 	cmd = 'python dijetfit.py --index 1 --xsec {xsec} -M {mass} --twoCatFit'.format(xsec=x,mass=mass)
  	print "Executing:",cmd
  	os.system(cmd)
 
+	print 'higgsCombinesignificance_{xsec}.Significance.mH{mass}.root'.format(xsec=x,mass=int(mass))
 	tf = ROOT.TFile.Open('higgsCombinesignificance_{xsec}.Significance.mH{mass}.root'.format(xsec=x,mass=int(mass)),'READ')
 	tree = tf.limit
 	tree.GetEntry(0) 		
@@ -229,6 +231,8 @@ if __name__ == "__main__":
 	tf.Close()
  		
 	fout.write('{xsec}\t{pvalue}\t{sig}\n'.format(xsec=x,pvalue=ypvalue2[-1],sig=ysig2[-1]))
+ 		 	
+ fout.close()
  		 	 			  
  print "******************** Results:"
  print 
