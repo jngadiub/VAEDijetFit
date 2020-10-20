@@ -205,28 +205,38 @@ class DataCardMaker:
 	sign = ROOT.Double(0.)
 	signG.GetPoint(0,x,sign)
 		
-        #self.w.factory("expr::{name}('({param})*(1+{vv_syst})',{vv_systs})".format(name='mean',param=mean,vv_syst=scaleStr,vv_systs=','.join(scaleSysts)))
-        #self.w.factory("expr::{name}('({param})*(1+{vv_syst})',{vv_systs})".format(name='sigma',param=sigma,vv_syst=resolutionStr,vv_systs=','.join(resolutionSysts)))
 	
-	mean = ROOT.RooRealVar("mean","mean",mean)
-	sigma = ROOT.RooRealVar("sigma","sigma",sigma)
-	getattr(self.w,'import')(mean,ROOT.RooFit.Rename('mean'))
-	getattr(self.w,'import')(sigma,ROOT.RooFit.Rename('sigma'))
-	
-        alpha = ROOT.RooRealVar("alpha","alpha",alpha)
-	sigfrac = ROOT.RooRealVar("sigfrac","sigfrac",sigfrac)
-	scalesigma = ROOT.RooRealVar("scalesigma","scalesigma",scalesigma)
-	sign = ROOT.RooRealVar("sign","sign",sign)
-	getattr(self.w,'import')(alpha,ROOT.RooFit.Rename('alpha'))
-	getattr(self.w,'import')(sigfrac,ROOT.RooFit.Rename('sigfrac'))
-	getattr(self.w,'import')(scalesigma,ROOT.RooFit.Rename('scalesigma'))
-	getattr(self.w,'import')(sign,ROOT.RooFit.Rename('sign'))	
-        gsigma = ROOT.RooFormulaVar("gsigma","@0*@1", ROOT.RooArgList(self.w.function("sigma"),scalesigma))
-        #getattr(self.w,'import')(gsigma,ROOT.RooFit.Rename('gsigma'))      
+	meanVar = "_".join(["MEAN",name,self.tag])
+        self.w.factory("expr::{name}('{param}*(1+{vv_syst})',{vv_systs},{param})".format(name=meanVar,param=mean,vv_syst=scaleStr,vv_systs=','.join(scaleSysts)))
 
-        gauss = ROOT.RooGaussian("gauss", "gauss", self.w.var(variable), self.w.function('mean'), gsigma)
-        cb    = ROOT.RooCBShape("cb", "cb",self.w.var(variable), self.w.function('mean'), self.w.function('sigma'), alpha, sign)
-        model = ROOT.RooAddPdf(pdfName, pdfName, gauss, cb, self.w.var('sigfrac'))
+        sigmaVar = "_".join(["SIGMA",name,self.tag])
+	self.w.factory("expr::{name}('{param}*(1+{vv_syst})',{vv_systs},{param})".format(name=sigmaVar,param=sigma,vv_syst=resolutionStr,vv_systs=','.join(resolutionSysts)))
+		
+	alphaVar = "_".join(["ALPHA",name,self.tag])		
+        alpha = ROOT.RooRealVar(alphaVar,alphaVar,alpha)
+	getattr(self.w,'import')(alpha,ROOT.RooFit.Rename(alphaVar))
+	
+	sigfracVar = "_".join(["SIGFRAC",name,self.tag])
+	sigfrac = ROOT.RooRealVar(sigfracVar,sigfracVar,sigfrac)
+	getattr(self.w,'import')(sigfrac,ROOT.RooFit.Rename(sigfracVar))
+	
+	scalesigmaVar = "_".join(["SCALESIGMA",name,self.tag])
+	scalesigma = ROOT.RooRealVar(scalesigmaVar,scalesigmaVar,scalesigma)
+	getattr(self.w,'import')(scalesigma,ROOT.RooFit.Rename(scalesigmaVar))
+	
+	signVar = "_".join(["SIGN",name,self.tag])
+	sign = ROOT.RooRealVar(signVar,signVar,sign)	
+	getattr(self.w,'import')(sign,ROOT.RooFit.Rename(signVar))
+
+        gsigmaVar = "_".join(["GSIGMA",name,self.tag])		
+        gsigma = ROOT.RooFormulaVar(gsigmaVar,"@0*@1", ROOT.RooArgList(self.w.function(sigmaVar),scalesigma))
+        #getattr(self.w,'import')(gsigma,ROOT.RooFit.Rename(gsigmaVar))      
+
+        gaussFunc = "_".join(["gauss",name,self.tag])	
+        gauss = ROOT.RooGaussian(gaussFunc, gaussFunc, self.w.var(variable), self.w.function(meanVar), gsigma)
+	cbFunc = "_".join(["cb",name,self.tag])
+        cb    = ROOT.RooCBShape(cbFunc, cbFunc,self.w.var(variable), self.w.function(meanVar), self.w.function(sigmaVar), alpha, sign)
+        model = ROOT.RooAddPdf(pdfName, pdfName, gauss, cb, self.w.var(sigfracVar))	
         getattr(self.w,'import')(model,ROOT.RooFit.Rename(pdfName))
 
     def addQCDShape(self,name,variable,preconstrains,nPars=4):
