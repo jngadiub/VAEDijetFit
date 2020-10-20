@@ -4,7 +4,7 @@
 
 Higgs combine tools is needed, either standalone or from cmssw. See [here](http://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/) for instructions to get latest version.
 
-### 1-category bump hunt
+### N-category bump hunt for a signal cross section hypothesis
 
 Run the 1-category and N-category s+b fit with injected signal of a chosen cross-section `--xsec`. The signal mass hypothesis can also be configured with `-M`. Signal and background
 h5 files are taken from the input folder set with `-i`. The `--sig` and `--qcd` should be relative to that input folder.
