@@ -1,42 +1,24 @@
 # Dijet fit with shapes for anomaly detection with VAE
 
-### 1-category bump hunt
+### Prerequisites
 
-Run the 1-category s+b fit with injected signal of a chosen cross-section `--xsec`.Chose the region to fit with `--index` where 0=inclusive,
-1=accepted 2=rejected. The signal mass hypothesis can also be configured with `-M`. Name and path of signal/background h5 files can be set with `--qcd` and `--sig`. 
+Higgs combine tools is needed, either standalone or from cmssw. See [here](http://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/) for instructions to get latest version.
 
-```
-python dijetfit.py --index {REGION} --xsec {XSEC} -M {MASS}
-```
+### N-category bump hunt for a signal cross section hypothesis
 
-### 2-category bump hunt
-
-The 2-category s+b fit is run in two steps:
-
-
-1. First make the control region datacard with the rejected sample with the additional `--twoCatFit` option:
+Run the 1-category and N-category s+b fit with injected signal of a chosen cross-section `--xsec`. The signal mass hypothesis can also be configured with `-M`. Signal and background
+h5 files are taken from the input folder set with `-i`. The `--sig` and `--qcd` should be relative to that input folder.
 
 ```
-python dijetfit.py --index 2 --xsec {XSEC} -M {MASS} --twoCatFit
-```
-
-2. Then make the signal region datacard which is combined with the control region datacard produced in step 1
-
-```
-python dijetfit.py --index 1 --xsec {XSEC} -M {MASS} --twoCatFit
+python dijetfit.py --xsec {XSEC} -M {MASS} -i {INPUTDIR} --sig {SIGNALPATH} --qcd {QCDPATH}
 ```
 
 ### Automatic scan of p-value/significance vs cross section
 
 ```
-python run_dijetfit.py 1
+python run_dijetfit.py --run --i {INPUTDIR} -M {MASS} -i {INPUTDIR} --sig {SIGNALPATH} --qcd {QCDPATH}
 ```
 
-This runs the scan for the 1-category bump hunt for both the inclusive and accepted samples. After that it runs the 2-category bump hunt. The cross
-section range and mass can be changed in the script. The results are saved in txt files (they should be three). If you have run the full scan and you just
-want to plot from the txt files then set first argument to 0:
-
-```
-python run_dijetfit.py 0
-```
-
+This first makes the workspaces input to combine and then computes expected significance with pre-fit Asimov dataset per each signal xsec hypothesis.
+The cross section range can be change in the `files_count.json` file. The results are saved in txt files for each quantile and for the combination. If you have run the full scan and you just
+want to plot from the txt files then remove option `--run`.
