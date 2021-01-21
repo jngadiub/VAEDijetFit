@@ -1,4 +1,5 @@
 import os,sys,time
+import numpy as np
 from array import array
 
 import ROOT
@@ -89,24 +90,25 @@ def plotPValue(xsec_scan):
 	gp2.SetLineWidth(2)
 	gp2.SetMarkerSize(1.)
 
-	ys3 = array('d',[])
-	yp3 = array('d',[])
+	if run_2cat_fit:
+		ys3 = array('d',[])
+		yp3 = array('d',[])
 
-	fin = open('results_twoCatFit.txt','r')
-	for l in fin.readlines():
-		l = l.split('\t')
-		print float(l[1])
- 		yp3.append(float(l[1]))
- 		ys3.append(float(l[2]))
-	fin.close()
-    
-	gp3 = ROOT.TGraph(nPoints,x,yp3)
-	gp3.SetName("PValue")
-	gp3.SetLineColor(ROOT.kPink)
-	gp3.SetMarkerColor(ROOT.kPink)
-	gp3.SetMarkerStyle(20)
-	gp3.SetLineWidth(2)
-	gp3.SetMarkerSize(1.)
+		fin = open('results_twoCatFit.txt','r')
+		for l in fin.readlines():
+			l = l.split('\t')
+			print float(l[1])
+	 		yp3.append(float(l[1]))
+	 		ys3.append(float(l[2]))
+		fin.close()
+	    
+		gp3 = ROOT.TGraph(nPoints,x,yp3)
+		gp3.SetName("PValue")
+		gp3.SetLineColor(ROOT.kPink)
+		gp3.SetMarkerColor(ROOT.kPink)
+		gp3.SetMarkerStyle(20)
+		gp3.SetLineWidth(2)
+		gp3.SetMarkerSize(1.)
 	
 	pvalues = [ ROOT.RooStats.SignificanceToPValue(i) for i in range(1,7) ]
 	lines = [ ROOT.TF1("SLine_%i"%i,"%f"%pvalues[i-1],xmin,xmax) for i in range(1,7) ]
@@ -129,13 +131,15 @@ def plotPValue(xsec_scan):
 	legend.SetFillColor(0)
 	legend.SetFillStyle(0)
 	legend.SetMargin(0.35)
-	legend.AddEntry(gp,'Accepted (1-cat fit)','LP') 
-	legend.AddEntry(gp3,'Accepted (2-cat fit)','LP') 
+	legend.AddEntry(gp,'Accepted (1-cat fit)','LP')
+	if run_2cat_fit: 
+		legend.AddEntry(gp3,'Accepted (2-cat fit)','LP') 
 	legend.AddEntry(gp2,'Inclusive','LP') 
 
 	gp.Draw('LP')
 	gp2.Draw('LPsame')
-	gp3.Draw('LPsame')
+	if run_2cat_fit: 
+		gp3.Draw('LPsame')
 	for l in lines: l.Draw("same")
 	for b in bans: b.Draw()
 	legend.Draw()
@@ -155,9 +159,12 @@ def plotPValue(xsec_scan):
 
 if __name__ == "__main__":
 
+ run_2cat_fit = False
+
  run = int(sys.argv[1])
  
- xsec = [i*0.0001 for i in range(0,15)]
+ #xsec = [i*0.0001 for i in range(0,14)]
+ xsec = np.linspace(0.0,0.0015,6)
  print xsec
  labels = ['total','accepted']
  mass = 3500.
@@ -182,7 +189,7 @@ if __name__ == "__main__":
      
 	for x in xsec:
  
- 		cmd = 'python dijetfit.py --index {index} --xsec {xsec} -M {mass}'.format(index=index,xsec=x,mass=mass)
+ 		cmd = 'python dijetfit.py --index {index} --xsec {xsec} -M {mass} --qcd ${{BG_FILE}} --sig ${{SIG_FILE}}'.format(index=index,xsec=x,mass=mass)
  		print "Executing:",cmd
  		os.system(cmd)
  		
@@ -202,37 +209,38 @@ if __name__ == "__main__":
  		 		 	
 	fout.close()	
  
- #run scan for 2-categories bump hunt
- fname = 'results_twoCatFit.txt'
- if os.path.exists(fname): os.system('rm %s'%fname)
- fout = open(fname,'w')
- 
- for x in xsec:
- 
- 	cmd = 'python dijetfit.py --index 2 --xsec {xsec} -M {mass} --twoCatFit'.format(xsec=x,mass=mass)
- 	print "Executing:",cmd
- 	os.system(cmd)
+ if run_2cat_fit:
+	 #run scan for 2-categories bump hunt
+	 fname = 'results_twoCatFit.txt'
+	 if os.path.exists(fname): os.system('rm %s'%fname)
+	 fout = open(fname,'w')
+	 
+	 for x in xsec:
+	 
+	 	cmd = 'python dijetfit.py --index 2 --xsec {xsec} -M {mass} --twoCatFit --qcd ${{BG_FILE}} --sig ${{SIG_FILE}}'.format(xsec=x,mass=mass)
+	 	print "Executing:",cmd
+	 	os.system(cmd)
 
- 	cmd = 'python dijetfit.py --index 1 --xsec {xsec} -M {mass} --twoCatFit'.format(xsec=x,mass=mass)
- 	print "Executing:",cmd
- 	os.system(cmd)
+	 	cmd = 'python dijetfit.py --index 1 --xsec {xsec} -M {mass} --twoCatFit --qcd ${{BG_FILE}} --sig ${{SIG_FILE}}'.format(xsec=x,mass=mass)
+	 	print "Executing:",cmd
+	 	os.system(cmd)
 
-	print 'higgsCombinesignificance_{xsec}.Significance.mH{mass}.root'.format(xsec=x,mass=int(mass))
-	tf = ROOT.TFile.Open('higgsCombinesignificance_{xsec}.Significance.mH{mass}.root'.format(xsec=x,mass=int(mass)),'READ')
-	tree = tf.limit
-	tree.GetEntry(0) 		
-	ysig2.append(tree.limit) 		
-	tf.Close()
+		print 'higgsCombinesignificance_{xsec}.Significance.mH{mass}.root'.format(xsec=x,mass=int(mass))
+		tf = ROOT.TFile.Open('higgsCombinesignificance_{xsec}.Significance.mH{mass}.root'.format(xsec=x,mass=int(mass)),'READ')
+		tree = tf.limit
+		tree.GetEntry(0) 		
+		ysig2.append(tree.limit) 		
+		tf.Close()
 
-	tf = ROOT.TFile.Open('higgsCombinepvalue_{xsec}.Significance.mH{mass}.root'.format(xsec=x,mass=int(mass)),'READ')
-	tree = tf.limit
-	tree.GetEntry(0) 		
-	ypvalue2.append(tree.limit) 		
-	tf.Close()
- 		
-	fout.write('{xsec}\t{pvalue}\t{sig}\n'.format(xsec=x,pvalue=ypvalue2[-1],sig=ysig2[-1]))
- 		 	
- fout.close()
+		tf = ROOT.TFile.Open('higgsCombinepvalue_{xsec}.Significance.mH{mass}.root'.format(xsec=x,mass=int(mass)),'READ')
+		tree = tf.limit
+		tree.GetEntry(0) 		
+		ypvalue2.append(tree.limit) 		
+		tf.Close()
+	 		
+		fout.write('{xsec}\t{pvalue}\t{sig}\n'.format(xsec=x,pvalue=ypvalue2[-1],sig=ysig2[-1]))
+	 		 	
+	 fout.close()
  		 	 			  
  print "******************** Results:"
  print 
