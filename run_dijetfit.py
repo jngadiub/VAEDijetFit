@@ -1,7 +1,6 @@
 import os,sys,time
 import numpy as np
 from array import array
-import numpy as np
 import optparse, json
 
 import ROOT

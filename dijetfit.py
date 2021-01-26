@@ -160,7 +160,7 @@ def calculateChi2(hdata,nPars,pulls): #THIS NEEDS TO BE FIXED
  ndf_VarBin = NumberOfObservations_VarBin - nPars -1 #ndof   
  return [chi2_VarBin,ndf_VarBin] 
  
-def makeData(options,dataFile,q,iq,quantiles,hdata,minMJJ=0,maxMJJ=1e+04):
+def makeData(options, dataFile, q, iq, quantiles, hdata, minMJJ=0, maxMJJ=1e+04):
  
  print "Current quantile file:",options.inputDir+"/"+q+"/"+dataFile
  if q=='q100': file = h5py.File(options.inputDir+"/q90/"+dataFile,'r')
