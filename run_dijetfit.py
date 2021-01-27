@@ -44,7 +44,7 @@ def get_canvas(cname):
    
    return canvas
    
-def plotPValue(xsec_scan,quantiles):
+def plotPValue(xsec_scan, quantiles, plot_name='pvalue'):
 
     xmin = xsec_scan[0]*1000.
     xmax = (xsec_scan[-1]+xsec_scan[-1]*0.1)*1000.
@@ -138,7 +138,7 @@ def plotPValue(xsec_scan,quantiles):
     canv.cd()
     canv.Update()
  
-    canv.SaveAs("pvalue.png")
+    canv.SaveAs(plot_name+".png")
     time.sleep(1000)
 
 
