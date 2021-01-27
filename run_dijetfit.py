@@ -169,7 +169,8 @@ if __name__ == "__main__":
         print "ERROR: set the cross sections to scan for signal",sigFile,"in the files_count.json file!"
         sys.exit()
 
-    quantiles = ['q1','q5','q10','q30','q50','q70','q90','q100','total']
+    # quantiles = ['q1','q5','q10','q30','q50','q70','q90','q100','total']
+    quantiles = ['q1', 'q10', 'q50', 'q90','q100','total']
 
     #if you have already run the scan, results are saved in txt files 
     if run == 0:
