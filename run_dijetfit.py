@@ -45,7 +45,7 @@ def get_canvas(cname):
    return canvas
 
 def make_plot_name_suffix(signal_name, signal_xsec=10):
-    return '_' + signal_name[:-3] + '_xsec' + str(xsec)
+    return '_' + signal_name[:-3] + '_xsec' + str(signal_xsec)
    
 def plotPValue(xsec_scan, quantiles, plot_name_suffix=''):
 
@@ -173,11 +173,11 @@ if __name__ == "__main__":
         sys.exit()
 
     # quantiles = ['q1','q5','q10','q30','q50','q70','q90','q100','total']
-    quantiles = ['q1', 'q10', 'q50', 'q90','q100','total']
+    quantiles = ['q01', 'q10', 'q50', 'q90','q100','total']
 
     #if you have already run the scan, results are saved in txt files 
     if run == 0:
-        plotPValue(xsec,['q1','q5','q10','q30','q50','q70','q90','q100','total','final'])
+        plotPValue(xsec,['q01','q5','q10','q30','q50','q70','q90','q100','total','final'])
         sys.exit()
 
     #first make workspaces

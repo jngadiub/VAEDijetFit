@@ -163,15 +163,15 @@ def calculateChi2(hdata,nPars,pulls): #THIS NEEDS TO BE FIXED
 def makeData(options, dataFile, q, iq, quantiles, hdata, minMJJ=0, maxMJJ=1e+04):
  
  file = h5py.File(options.inputDir+"/"+dataFile,'r')
- 
- sel_key_q = 'sel_' + q # selection column for quantile q
+ import ipdb; ipdb.set_trace()
+ sel_key_q = 'sel_q90' if q == 'q100' else 'sel_' + q # selection column for quantile q (use rejected events of q90 for q100)
  print "Current quantile file: %s, reading quantile %s" % (file, sel_key_q)
 
  mjj_idx = np.where(file['eventFeatureNames'][()] == 'mJJ')[0]
  sel_idx = np.where(file['eventFeatureNames'][()] == sel_key_q)[0] # 0=rejected 1=accepted
  data = file['eventFeatures'][()] 
  
- if q=='q1':
+ if q=='q01':
   for e in range(data.shape[0]):
    #if data[e][mjj_idx] < minMJJ or data[e][mjj_idx] > maxMJJ: continue
    if data[e][sel_idx]==1: hdata.Fill(data[e][mjj_idx])
@@ -183,7 +183,7 @@ def makeData(options, dataFile, q, iq, quantiles, hdata, minMJJ=0, maxMJJ=1e+04)
   for e in range(data.shape[0]): hdata.Fill(data[e][mjj_idx]) 
  else:   
   print ".... checking orthogonality wrt",quantiles[iq-1],"quantile...."
-  sel_key_iq = 'sel_q' + quantiles[iq-1] # selection column for quantile q
+  sel_key_iq = 'sel_' + quantiles[iq-1] # selection column for quantile q
   sel_idx_iq = np.where(file['eventFeatureNames'][()] == sel_key_iq)[0] # 0=rejected 1=accepted
   for e in range(data.shape[0]): 
    #if data[e][mjj_idx] < minMJJ or data[e][mjj_idx] > maxMJJ: continue
@@ -248,7 +248,7 @@ if __name__ == "__main__":
  roobins = ROOT.RooBinning(len(binsx)-1, array('d',binsx), "mjjbins")
  bins_fine = int(binsx[-1]-binsx[0])
  # quantiles = ['q1','q5','q10','q30','q50','q70','q90','q100','total']
- quantiles = ['q1', 'q10', 'q50', 'q90','q100','total']
+ quantiles = ['q01', 'q10', 'q50', 'q90','q100','total']
  nPars = 2 # DO THESE NEED TO BE DIFFERENT DEPENDING ON QUANTILE???
  bins_sig_fit = array('f',truncate([binsx[0]+ib for ib in range(bins_fine+1)],0.8*mass,1.2*mass))
  large_bins_sig_fit = array('f',truncate(binsx,0.8*mass,1.2*mass))
