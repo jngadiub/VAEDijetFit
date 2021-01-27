@@ -43,8 +43,11 @@ def get_canvas(cname):
    canvas.SetLogy()
    
    return canvas
+
+def make_plot_name_suffix(signal_name, signal_xsec=10):
+    return '_' + signal_name[:-3] + '_xsec' + str(xsec)
    
-def plotPValue(xsec_scan, quantiles, plot_name='pvalue'):
+def plotPValue(xsec_scan, quantiles, plot_name_suffix=''):
 
     xmin = xsec_scan[0]*1000.
     xmax = (xsec_scan[-1]+xsec_scan[-1]*0.1)*1000.
@@ -138,7 +141,7 @@ def plotPValue(xsec_scan, quantiles, plot_name='pvalue'):
     canv.cd()
     canv.Update()
  
-    canv.SaveAs(plot_name+".png")
+    canv.SaveAs("pvalue"+plot_name_suffix+".png")
     time.sleep(1000)
 
 
@@ -254,5 +257,5 @@ if __name__ == "__main__":
     print ysig
     print ypvalue
 
-    plotPValue(xsec,['q1','q5','q10','q30','q50','q70','q90','q100','total','final'])
+    plotPValue(xsec,['q1','q5','q10','q30','q50','q70','q90','q100','total','final'], make_plot_name_suffix(sigFile))
   
