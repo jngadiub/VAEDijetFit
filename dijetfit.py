@@ -164,8 +164,8 @@ def makeData(options, dataFile, q, iq, quantiles, hdata, minMJJ=0, maxMJJ=1e+04)
  
  file = h5py.File(options.inputDir+"/"+dataFile,'r')
  
- sel_key_q = 'sel_q%02d' % (q*100) # selection column for quantile q
- print "Current quantile file: %s, reading quantile %s" % file, sel_key_q
+ sel_key_q = 'sel_' + q # selection column for quantile q
+ print "Current quantile file: %s, reading quantile %s" % (file, sel_key_q)
 
  mjj_idx = np.where(file['eventFeatureNames'][()] == 'mJJ')[0]
  sel_idx = np.where(file['eventFeatureNames'][()] == sel_key_q)[0] # 0=rejected 1=accepted
@@ -183,7 +183,7 @@ def makeData(options, dataFile, q, iq, quantiles, hdata, minMJJ=0, maxMJJ=1e+04)
   for e in range(data.shape[0]): hdata.Fill(data[e][mjj_idx]) 
  else:   
   print ".... checking orthogonality wrt",quantiles[iq-1],"quantile...."
-  sel_key_iq = 'sel_q%02d' % (quantiles[iq-1]*100) # selection column for quantile q
+  sel_key_iq = 'sel_q' + quantiles[iq-1] # selection column for quantile q
   sel_idx_iq = np.where(file['eventFeatureNames'][()] == sel_key_iq)[0] # 0=rejected 1=accepted
   for e in range(data.shape[0]): 
    #if data[e][mjj_idx] < minMJJ or data[e][mjj_idx] > maxMJJ: continue
@@ -254,7 +254,7 @@ if __name__ == "__main__":
  large_bins_sig_fit = array('f',truncate(binsx,0.8*mass,1.2*mass))
  roobins_sig_fit = ROOT.RooBinning(len(large_bins_sig_fit)-1, array('d',large_bins_sig_fit), "mjjbins_sig")
 
- qr_test_share = 0.7
+ qr_test_share = 0.8
  qcd_xsec = 8.73e6
  qcd_gen_events = qr_test_share*get_generated_events(options.qcdFile)
  sig_xsec = 1000.
