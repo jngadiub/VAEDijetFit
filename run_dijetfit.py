@@ -159,7 +159,7 @@ if __name__ == "__main__":
     parser.add_option("-i","--inputDir",dest="inputDir",default='./',help="directory with all quantiles h5 files")
     parser.add_option("--qcd","--qcd",dest="qcdFile",default='qcd.h5',help="QCD h5 file")
     parser.add_option("--sig","--sig",dest="sigFile",default='signal.h5',help="Signal h5 file")
-    parser.add_option("--sigxsec", "-sx", dest="sigXsec", default=10, help="true signal cross-section")
+    parser.add_option("-x", "--sigxsec", dest="sigXsec", default=10, help="true signal cross-section")
     (options,args) = parser.parse_args()
 
     run = options.run
