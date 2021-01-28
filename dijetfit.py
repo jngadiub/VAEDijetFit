@@ -163,7 +163,7 @@ def calculateChi2(hdata,nPars,pulls): #THIS NEEDS TO BE FIXED
 def makeData(options, dataFile, q, iq, quantiles, hdata, minMJJ=0, maxMJJ=1e+04):
  
  file = h5py.File(options.inputDir+"/"+dataFile,'r')
- import ipdb; ipdb.set_trace()
+ # import ipdb; ipdb.set_trace()
  sel_key_q = 'sel_q90' if q == 'q100' else 'sel_' + q # selection column for quantile q (use rejected events of q90 for q100)
  print "Current quantile file: %s, reading quantile %s" % (file, sel_key_q)
 
@@ -538,12 +538,12 @@ if __name__ == "__main__":
  for l in dorig.readlines(): d.write(l)
  d.write('quantile_q100_rate     rateParam       quantile_q100  model_qcd_mjj   1\n')
  d.write('quantile_q90_rate      rateParam       quantile_q90  model_qcd_mjj   (0.20*@0)/0.10  quantile_q100_rate\n')
- d.write('quantile_q70_rate      rateParam       quantile_q70  model_qcd_mjj   (0.20*@0)/0.10  quantile_q100_rate\n')
+ # d.write('quantile_q70_rate      rateParam       quantile_q70  model_qcd_mjj   (0.20*@0)/0.10  quantile_q100_rate\n')
  d.write('quantile_q50_rate      rateParam       quantile_q50  model_qcd_mjj   (0.20*@0)/0.10  quantile_q100_rate\n')
- d.write('quantile_q30_rate      rateParam       quantile_q30  model_qcd_mjj   (0.20*@0)/0.10  quantile_q100_rate\n') 
+ # d.write('quantile_q30_rate      rateParam       quantile_q30  model_qcd_mjj   (0.20*@0)/0.10  quantile_q100_rate\n') 
  d.write('quantile_q10_rate      rateParam       quantile_q10  model_qcd_mjj   (0.05*@0)/0.10  quantile_q100_rate\n')
- d.write('quantile_q5_rate      rateParam       quantile_q5  model_qcd_mjj   (0.04*@0)/0.10  quantile_q100_rate\n')
- d.write('quantile_q1_rate      rateParam       quantile_q1  model_qcd_mjj   (0.01*@0)/0.10  quantile_q100_rate\n')
+ # d.write('quantile_q5_rate      rateParam       quantile_q5  model_qcd_mjj   (0.04*@0)/0.10  quantile_q100_rate\n')
+ d.write('quantile_q01_rate      rateParam       quantile_q01  model_qcd_mjj   (0.01*@0)/0.10  quantile_q100_rate\n')
  d.close()
  cmd = 'mv datacard_tmp.txt datacard_{xsec}_final.txt && text2workspace.py datacard_{xsec}_final.txt -o workspace_{xsec}_final.root && combine -M Significance workspace_{xsec}_final.root -m {mass} -n significance_{xsec} && combine -M Significance workspace_{xsec}_final.root -m {mass} --pvalue -n pvalue_{xsec}'.format(mass=mass,xsec=xsec)
  print cmd
