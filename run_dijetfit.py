@@ -44,7 +44,7 @@ def get_canvas(cname):
    
    return canvas
 
-def make_plot_name_suffix(signal_name, signal_xsec=10):
+def make_run_str(signal_name, signal_xsec=10):
     return '_' + signal_name[:-3] + '_xsec' + str(signal_xsec)
    
 def plotPValue(xsec_scan, quantiles, plot_name_suffix=''):
@@ -169,6 +169,9 @@ if __name__ == "__main__":
     inputDir = options.inputDir
     xsec = np.array(get_xsec_scan(options.sigFile))
 
+    # distinctive run string
+    run_str = make_run_str(signal_name=sigFile, signal_xsec=options.sigXsec)
+
     if len(xsec) == 0:
         print "ERROR: set the cross sections to scan for signal",sigFile,"in the files_count.json file!"
         sys.exit()
@@ -258,5 +261,5 @@ if __name__ == "__main__":
     print ysig
     print ypvalue
 
-    plotPValue(xsec, quantiles + ['final'], make_plot_name_suffix(signal_name=sigFile, signal_xsec=options.sigXsec))
+    plotPValue(xsec, quantiles + ['final'], run_str)
   
