@@ -178,7 +178,7 @@ if __name__ == "__main__":
 
     #if you have already run the scan, results are saved in txt files 
     if run == 0:
-        plotPValue(xsec,['q01','q5','q10','q30','q50','q70','q90','q100','total','final'])
+        plotPValue(xsec, quantiles+['final'])
         sys.exit()
 
     #first make workspaces
@@ -258,5 +258,5 @@ if __name__ == "__main__":
     print ysig
     print ypvalue
 
-    plotPValue(xsec,['q1','q5','q10','q30','q50','q70','q90','q100','total','final'], make_plot_name_suffix(signal_name=sigFile, signal_xsec=options.sigXsec))
+    plotPValue(xsec, quantiles + ['final'], make_plot_name_suffix(signal_name=sigFile, signal_xsec=options.sigXsec))
   
