@@ -142,14 +142,10 @@ def plotPValue(xsec_scan, quantiles, plot_name_suffix=''):
     canv.Update()
  
     canv.SaveAs("pvalue"+plot_name_suffix+".png")
-    time.sleep(1000)
+    time.sleep(10)
 
 
 if __name__ == "__main__":
-
-    #xsec = [i*0.0001 for i in range(0,14)]
-    xsec = np.linspace(0.0,0.0015,6)
-    print xsec
 
     #python run_dijetfit.py --run --i inputdir -M 1500 --sig RSGraviton_WW_NARROW_13TeV_PU40_1.5TeV_parts/RSGraviton_WW_NARROW_13TeV_PU40_1.5TeV_reco.h5 --qcd qcd_sqrtshatTeV_13TeV_PU40_ALL_parts/qcd_sqrtshatTeV_13TeV_PU40_ALL_reco.h5
 
