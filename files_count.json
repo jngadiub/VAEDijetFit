@@ -16,7 +16,7 @@
  "XXproduction_Xto2q_13TeV_PU40":[705335,98,[]],
  "XXproduction_Xto2q_13TeV_PU40_SIDEBAND":[705335,98,[]],
  "qcd_sqrtshatTeV_13TeV_PU40":[199435365,2180,[]],
- "qcd_sqrtshatTeV_13TeV_PU40_EXT":[134264102,287,[]],
- "qcd_sqrtshatTeV_13TeV_PU40_EXT_SIDEBAND":[90490645,267,[]],
+ "qcd_sqrtshatTeV_13TeV_PU40_EXT":[134264102,1160,[]],
+ "qcd_sqrtshatTeV_13TeV_PU40_EXT_SIDEBAND":[90490645,1160,[]],
  "qcd_sqrtshatTeV_13TeV_PU40_SIDEBAND":[134366091,2117,[]],
  "ttbar_highpt_13TeV_PU40":[714545,99,[]]}
