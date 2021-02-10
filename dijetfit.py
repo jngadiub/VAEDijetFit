@@ -248,7 +248,7 @@ if __name__ == "__main__":
  roobins = ROOT.RooBinning(len(binsx)-1, array('d',binsx), "mjjbins")
  bins_fine = int(binsx[-1]-binsx[0])
  # quantiles = ['q1','q5','q10','q30','q50','q70','q90','q100','total']
- quantiles = ['q01', 'q10', 'q50', 'q90','q100','total']
+ quantiles = ['q01', 'q10', 'q30', 'q50', 'q70', 'q90','q100','total']
  nPars = 2 # DO THESE NEED TO BE DIFFERENT DEPENDING ON QUANTILE???
  bins_sig_fit = array('f',truncate([binsx[0]+ib for ib in range(bins_fine+1)],0.8*mass,1.2*mass))
  large_bins_sig_fit = array('f',truncate(binsx,0.8*mass,1.2*mass))
@@ -538,9 +538,9 @@ if __name__ == "__main__":
  for l in dorig.readlines(): d.write(l)
  d.write('quantile_q100_rate     rateParam       quantile_q100  model_qcd_mjj   1\n')
  d.write('quantile_q90_rate      rateParam       quantile_q90  model_qcd_mjj   (0.20*@0)/0.10  quantile_q100_rate\n')
- # d.write('quantile_q70_rate      rateParam       quantile_q70  model_qcd_mjj   (0.20*@0)/0.10  quantile_q100_rate\n')
+ d.write('quantile_q70_rate      rateParam       quantile_q70  model_qcd_mjj   (0.20*@0)/0.10  quantile_q100_rate\n')
  d.write('quantile_q50_rate      rateParam       quantile_q50  model_qcd_mjj   (0.20*@0)/0.10  quantile_q100_rate\n')
- # d.write('quantile_q30_rate      rateParam       quantile_q30  model_qcd_mjj   (0.20*@0)/0.10  quantile_q100_rate\n') 
+ d.write('quantile_q30_rate      rateParam       quantile_q30  model_qcd_mjj   (0.20*@0)/0.10  quantile_q100_rate\n') 
  d.write('quantile_q10_rate      rateParam       quantile_q10  model_qcd_mjj   (0.05*@0)/0.10  quantile_q100_rate\n')
  # d.write('quantile_q5_rate      rateParam       quantile_q5  model_qcd_mjj   (0.04*@0)/0.10  quantile_q100_rate\n')
  d.write('quantile_q01_rate      rateParam       quantile_q01  model_qcd_mjj   (0.01*@0)/0.10  quantile_q100_rate\n')
