@@ -44,8 +44,8 @@ def get_canvas(cname):
    
    return canvas
 
-def make_run_str(signal_name, signal_xsec=10):
-    return '_' + signal_name[:-3] + '_xsec' + str(signal_xsec)
+def make_run_str(signal_name, signal_xsec=10, run_n=0):
+    return '_' + signal_name[:-3] + '_xsec' + str(signal_xsec) + '_run' + str(run_n) 
    
 def plotPValue(xsec_scan, quantiles, plot_name_suffix=''):
 
@@ -100,14 +100,14 @@ def plotPValue(xsec_scan, quantiles, plot_name_suffix=''):
     pvalues = [ ROOT.RooStats.SignificanceToPValue(i) for i in range(1,7) ]
     lines = [ ROOT.TLine(xmin,pvalues[i-1],xmax,pvalues[i-1]) for i in range(1,7) ]
     for l in lines:
-        l.SetLineColor(ROOT.kRed)
+        l.SetLineColor(ROOT.kGray+1)
         l.SetLineWidth(2)
-        l.SetLineStyle(3)
+        l.SetLineStyle(rt.kDashed)
      
     bans = [ ROOT.TLatex(xmax*0.93,pvalues[i-1],("%i #sigma"%(i))) for i in range(1,7) ]
     for b in bans:
         b.SetTextSize(0.028)
-        b.SetTextColor(2)
+        b.SetTextColor(ROOT.kGray+1)
 
     legend = ROOT.TLegend(0.18,0.2183362,0.28,0.419833)
     legend.SetTextSize(0.032)
@@ -120,6 +120,8 @@ def plotPValue(xsec_scan, quantiles, plot_name_suffix=''):
     legend.SetMargin(0.35)
 
     for iq,q in enumerate(quantiles):
+        if q == 'total': q = 'bump hunt'
+        if q == 'final' : q = 'AD bump hunt'
         legend.AddEntry(graphs[iq],q,'LP') 
 
     graphs[0].Draw('LP')
@@ -151,6 +153,7 @@ if __name__ == "__main__":
 
     parser = optparse.OptionParser()
     parser.add_option("--run","--run",dest="run",default=False,action="store_true",help="Run scan")
+    parser.add_option("-n","-n",dest="run_n", type=int, default=0, help="Experiment number")
     parser.add_option("-M","-M",dest="mass",type=float,default=3500.,help="Injected signal mass")
     parser.add_option("-i","--inputDir",dest="inputDir",default='./',help="directory with all quantiles h5 files")
     parser.add_option("--qcd","--qcd",dest="qcdFile",default='qcd.h5',help="QCD h5 file")
@@ -166,7 +169,7 @@ if __name__ == "__main__":
     xsec = np.array(get_xsec_scan(options.sigFile))
 
     # distinctive run string
-    run_str = make_run_str(signal_name=sigFile, signal_xsec=options.sigXsec)
+    run_str = make_run_str(signal_name=options.sigFile, signal_xsec=options.sigXsec, run_n=options.run_n)
 
     if len(xsec) == 0:
         print "ERROR: set the cross sections to scan for signal",sigFile,"in the files_count.json file!"
