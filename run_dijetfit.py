@@ -102,7 +102,7 @@ def plotPValue(xsec_scan, quantiles, plot_name_suffix=''):
     for l in lines:
         l.SetLineColor(ROOT.kGray+1)
         l.SetLineWidth(2)
-        l.SetLineStyle(rt.kDashed)
+        l.SetLineStyle(ROOT.kDashed)
      
     bans = [ ROOT.TLatex(xmax*0.93,pvalues[i-1],("%i #sigma"%(i))) for i in range(1,7) ]
     for b in bans:
@@ -152,12 +152,12 @@ if __name__ == "__main__":
     #python run_dijetfit.py --run --i inputdir -M 1500 --sig RSGraviton_WW_NARROW_13TeV_PU40_1.5TeV_parts/RSGraviton_WW_NARROW_13TeV_PU40_1.5TeV_reco.h5 --qcd qcd_sqrtshatTeV_13TeV_PU40_ALL_parts/qcd_sqrtshatTeV_13TeV_PU40_ALL_reco.h5
 
     parser = optparse.OptionParser()
-    parser.add_option("--run","--run",dest="run",default=False,action="store_true",help="Run scan")
+    parser.add_option("--run","--run", dest="run", default=False, action="store_true", help="Run scan")
     parser.add_option("-n","-n",dest="run_n", type=int, default=0, help="Experiment number")
-    parser.add_option("-M","-M",dest="mass",type=float,default=3500.,help="Injected signal mass")
-    parser.add_option("-i","--inputDir",dest="inputDir",default='./',help="directory with all quantiles h5 files")
-    parser.add_option("--qcd","--qcd",dest="qcdFile",default='qcd.h5',help="QCD h5 file")
-    parser.add_option("--sig","--sig",dest="sigFile",default='signal.h5',help="Signal h5 file")
+    parser.add_option("-M","-M", dest="mass", type=float, default=3500., help="Injected signal mass")
+    parser.add_option("-i","--inputDir",dest="inputDir", default='./', help="directory with all quantiles h5 files")
+    parser.add_option("--qcd","--qcd", dest="qcdFile", default='qcd.h5', help="QCD h5 file")
+    parser.add_option("--sig","--sig", dest="sigFile", default='signal.h5', help="Signal h5 file")
     parser.add_option("-x", "--sigxsec", dest="sigXsec", default=10, help="true signal cross-section")
     (options,args) = parser.parse_args()
 
@@ -183,7 +183,7 @@ if __name__ == "__main__":
         plotPValue(xsec, quantiles+['final'])
         sys.exit()
 
-    #first make workspaces
+    #first make workspaces (signal xsec set default to 0! -> assuming 1000fb of signal -> deriving sig histo scaling constant from that (???))
     cmd = "python dijetfit.py -i {inputdir} --sig {sigfile} --qcd {qcdfile} --xsec 0.0 -M {mass}".format(inputdir=inputDir,sigfile=sigFile,qcdfile=qcdFile,mass=mass)
     print cmd
     os.system(cmd)
@@ -198,6 +198,7 @@ if __name__ == "__main__":
         ypvalue[q] = []
         outfiles.append(open('results_%s.txt'%q,'w'))
 
+    # [0.0,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1] (of 1 pico-barn)
     for x in xsec:
         for iq,q in enumerate(quantiles):
      
