@@ -159,6 +159,7 @@ if __name__ == "__main__":
     parser.add_option("--qcd","--qcd", dest="qcdFile", default='qcd.h5', help="QCD h5 file")
     parser.add_option("--sig","--sig", dest="sigFile", default='signal.h5', help="Signal h5 file")
     parser.add_option("-x", "--sigxsec", dest="sigXsec", default=10, help="true signal cross-section")
+    parser.add_option("--res", "--res", dest="sigRes", type="choice", choices=("na", "br"), default="na", help="resonance type: narrow [na] or broad [br]")
     (options,args) = parser.parse_args()
 
     run = options.run
@@ -166,6 +167,7 @@ if __name__ == "__main__":
     sigFile = options.sigFile
     qcdFile = options.qcdFile
     inputDir = options.inputDir
+    sigRes = options.sigRes
     xsec = np.array(get_xsec_scan(options.sigFile))
 
     # distinctive run string
@@ -184,7 +186,7 @@ if __name__ == "__main__":
         sys.exit()
 
     #first make workspaces (signal xsec set default to 0! -> assuming 1000fb of signal -> deriving sig histo scaling constant from that (???))
-    cmd = "python dijetfit.py -i {inputdir} --sig {sigfile} --qcd {qcdfile} --xsec 0.0 -M {mass}".format(inputdir=inputDir,sigfile=sigFile,qcdfile=qcdFile,mass=mass)
+    cmd = "python dijetfit.py -i {inputdir} --sig {sigfile} --qcd {qcdfile} --xsec 0.0 -M {mass} --res {res}".format(inputdir=inputDir,sigfile=sigFile,qcdfile=qcdFile,mass=mass, res=sigRes)
     print cmd
     os.system(cmd)
 

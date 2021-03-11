@@ -240,10 +240,12 @@ if __name__ == "__main__":
  parser.add_option("--qcd","--qcd",dest="qcdFile",default='qcd.h5',help="QCD h5 file")
  parser.add_option("--sig","--sig",dest="sigFile",default='signal.h5',help="Signal h5 file")
  parser.add_option("-l","--load_data",dest="load_data",action="store_true",help="Load orthogonal data")
+ parser.add_option("--res", "--res", dest="sigRes", type="choice", choices=("na", "br"), default="na", help="resonance type: narrow [na] or broad [br]")
  (options,args) = parser.parse_args()
   
  xsec = options.xsec
- mass = options.mass 
+ mass = options.mass
+ sigRes = options.sigRes 
  binsx = [1126,1181,1246,1313,1383,1455,1530,1607,1687,1770,1856,1945,2037,2132,2231,2332,2438,2546,2659,2775,2895,3019,3147,3279,3416,3558,3704,3854,4010,4171,4337,4509,4686,4869,5058,5253,5500,5663,5877,6099,6328,6564,6808]
  shift = 1200 - binsx[0] # shift to mjj cut
  binsx = [e+shift for e in binsx]
@@ -261,7 +263,7 @@ if __name__ == "__main__":
  qcd_gen_events = qr_test_share*get_generated_events(options.qcdFile) # 80% of SR qcd events => why applying dEta (SR) cut here but not all the other cuts??
  sig_xsec = 1000. # metric [fb] = 1 [pb]???
  sig_gen_events = qr_test_share*get_generated_events(options.sigFile) # 80% of signal events (but this corresponds to an enormous xsec?!)
- lumi = qcd_gen_events/qcd_xsec # ??? qcd lumi
+ lumi = qcd_gen_events/qcd_xsec # ??? qcd SR lumi
   
  ################################### FIRST PREPARE DATA ###################################
  '''
@@ -343,7 +345,18 @@ if __name__ == "__main__":
   ### create signal model: gaussian centered at mass-center with sigma in {2%,10%of mass center} + crystal ball for asymmetric tail
 
   fitter=Fitter(['mjj_fine'])
-  fitter.signalResonance('model_s',"mjj_fine",mass)
+  # if narrow signal, fit narrow model
+  if sigRes == "na":
+    fitter.signalResonance('model_s',"mjj_fine",mass)
+  # else fit broad signal
+  else:
+    # set crystal ball function params
+    alpha_ini=0.85 
+    sign_ini=0.5 
+    sign_n_stop=20
+    # make gauss sigma broader
+    sigma = (mass*0.1, mass*0.02, mass*0.2)
+    fitter.signalResonance('model_s',"mjj_fine", mass=mass, alpha_ini=alpha_ini, sign_ini=sign_ini, sig_n_stop=sig_n_stop, sigma=sigma)
 
   ### fit the signal model to sig histogram data
 
