@@ -148,10 +148,12 @@ class Fitter(object):
         pullDist = self.frame.pullHist()
         return self.frame.chiSquare()
          
-    def signalResonance(self, name = 'model',poi="MVV",mass=0, alpha_ini=0.85, sign_ini=6, sign_n_stop=150, sigma=None): # poi= mjj_fine
+    def signalResonance(self, name = 'model',poi="MVV",mass=0, sigma=None, alpha=None, sign=None): # poi= mjj_fine
     
-        # set default gauss sigma tuple if none passed
+        # set default gauss sigma and crystal ball alpha and n tuple if none passed
         sigma = sigma or (mass*0.05, mass*0.02, mass*0.10)
+        alpha = alpha or (0.85, 0.60, 1.20)
+        sign = sign or (6., 0.1, 150.)
 
         ROOT.gSystem.Load("libHiggsAnalysisCombinedLimit")
     
@@ -160,8 +162,8 @@ class Fitter(object):
         # !!! => adapt sigma for broad signal
         self.w.factory("mean[%.1f,%.1f,%.1f]"%(mass,0.8*mass,1.2*mass))
         self.w.factory("sigma[%.1f,%.1f,%.1f]"%(sigma))
-        self.w.factory("alpha[%.2f,0.60,1.20]"%(alpha_ini)) 
-        self.w.factory("sign[%.1f,0.1,%.1f]"%(sign_ini, sign_n_stop))
+        self.w.factory("alpha[%.2f,%.2f,%.2f]"%(alpha)) 
+        self.w.factory("sign[%.1f,%.1f,%.1f]"%(sign))
         self.w.factory("scalesigma[2.0,1.2,3.6]")
         gsigma = ROOT.RooFormulaVar("gsigma","@0*@1", ROOT.RooArgList(self.w.var("sigma"),self.w.var("scalesigma")))
         getattr(self.w,'import')(gsigma,ROOT.RooFit.Rename('gsigma'))

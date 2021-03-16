@@ -22,7 +22,8 @@ def get_generated_events(filename):
  
  N = 0
  for k in data.keys():
-  if (k in filename or k.replace('_EXT','') in filename) and not 'SIDEBAND' in k: N+=data[k][0]
+  if k in filename or k.replace('_EXT','') in filename: 
+    N += data[k][0]
   
  return N 
                                                                
@@ -163,13 +164,19 @@ def calculateChi2(hdata,nPars,pulls): #THIS NEEDS TO BE FIXED
 def makeData(options, dataFile, q, iq, quantiles, hdata, minMJJ=0, maxMJJ=1e+04):
  
  file = h5py.File(options.inputDir+"/"+dataFile,'r')
- # import ipdb; ipdb.set_trace()
  sel_key_q = 'sel_q90' if q == 'q100' else 'sel_' + q # selection column for quantile q (use rejected events of q90 for q100)
  print "Current quantile file: %s, reading quantile %s" % (file, sel_key_q)
 
- mjj_idx = np.where(file['eventFeatureNames'][()] == 'mJJ')[0]
- sel_idx = np.where(file['eventFeatureNames'][()] == sel_key_q)[0] # 0=rejected 1=accepted
  data = file['eventFeatures'][()] 
+ mjj_idx = np.where(file['eventFeatureNames'][()] == 'mJJ')[0][0]
+
+ # if quantile = total, fill histogram with all data and return
+ if q=='total':  
+  for e in range(data.shape[0]): hdata.Fill(data[e][mjj_idx])
+  return 
+
+ # else, if quantile = real quantile, fill with orthogonal data
+ sel_idx = np.where(file['eventFeatureNames'][()] == sel_key_q)[0][0] # 0=rejected 1=accepted
  
  if q=='q01':
   for e in range(data.shape[0]):
@@ -179,8 +186,6 @@ def makeData(options, dataFile, q, iq, quantiles, hdata, minMJJ=0, maxMJJ=1e+04)
   for e in range(data.shape[0]): 
    #if data[e][mjj_idx] < minMJJ or data[e][mjj_idx] > maxMJJ: continue
    if data[e][sel_idx]==0: hdata.Fill(data[e][mjj_idx]) 
- elif q=='total':  
-  for e in range(data.shape[0]): hdata.Fill(data[e][mjj_idx]) 
  else:   
   print ".... checking orthogonality wrt",quantiles[iq-1],"quantile...."
   sel_key_iq = 'sel_' + quantiles[iq-1] # selection column for quantile q
@@ -254,8 +259,15 @@ if __name__ == "__main__":
  # quantiles = ['q1','q5','q10','q30','q50','q70','q90','q100','total']
  quantiles = ['q01', 'q10', 'q30', 'q50', 'q70', 'q90','q100','total']
  nPars = 2 # DO THESE NEED TO BE DIFFERENT DEPENDING ON QUANTILE???
- bins_sig_fit = array('f',truncate([binsx[0]+ib for ib in range(bins_fine+1)],0.8*mass,1.2*mass))
- large_bins_sig_fit = array('f',truncate(binsx,0.8*mass,1.2*mass))
+
+ # change signal fit intervall according to resonance breadth
+ if sigRes == "na":
+    sig_mjj_limits = (0.8*mass,1.2*mass)
+ else:
+    sig_mjj_limits = (0.4*mass,1.4*mass)
+
+ bins_sig_fit = array('f',truncate([binsx[0]+ib for ib in range(bins_fine+1)],*sig_mjj_limits))
+ large_bins_sig_fit = array('f',truncate(binsx,*sig_mjj_limits))
  roobins_sig_fit = ROOT.RooBinning(len(large_bins_sig_fit)-1, array('d',large_bins_sig_fit), "mjjbins_sig")
 
  qr_test_share = 0.8
@@ -263,7 +275,7 @@ if __name__ == "__main__":
  qcd_gen_events = qr_test_share*get_generated_events(options.qcdFile) # 80% of SR qcd events => why applying dEta (SR) cut here but not all the other cuts??
  sig_xsec = 1000. # metric [fb] = 1 [pb]???
  sig_gen_events = qr_test_share*get_generated_events(options.sigFile) # 80% of signal events (but this corresponds to an enormous xsec?!)
- lumi = qcd_gen_events/qcd_xsec # ??? qcd SR lumi
+ lumi = qcd_gen_events/qcd_xsec # ??? qcd SR lumi 51
   
  ################################### FIRST PREPARE DATA ###################################
  '''
@@ -277,6 +289,7 @@ if __name__ == "__main__":
  histos_sig = []
  histos_qcd = []
 
+ import ipdb; ipdb.set_trace()
  if not options.load_data:
  
   #Signal data preparation 
@@ -285,7 +298,7 @@ if __name__ == "__main__":
    #histos_sig.append( ROOT.TH1F("mjj_sig_%s"%q,"mjj_sig_%s"%q,bins_fine,binsx[0],binsx[-1]) )
    histos_sig.append( ROOT.TH1F("mjj_sig_%s"%q,"mjj_sig_%s"%q,len(bins_sig_fit)-1,bins_sig_fit) )
    print
-   makeData(options,options.sigFile,q,iq,quantiles,histos_sig[-1],0.8*mass,1.2*mass) #first fill orthogonal data histos
+   makeData(options,options.sigFile,q,iq,quantiles,histos_sig[-1],*sig_mjj_limits) #first fill orthogonal data histos
    print "************ Found",histos_sig[-1].GetEntries(),"signal events for quantile",q
    print
   
@@ -302,7 +315,7 @@ if __name__ == "__main__":
   for h in histos_qcd: h.SaveAs("data_"+h.GetName()+".root")
  
  else: #let's make it faster if you have run once already!
- 
+  print('=== loading histogram data from file ===')
   #Load signal data
   for q in quantiles:
   
@@ -324,8 +337,10 @@ if __name__ == "__main__":
   for q,h in enumerate(histos_sig): print "************ Found",h.GetEntries(),"signal events for quantile",quantiles[q]
   for q,h in enumerate(histos_qcd): print "************ Found",h.GetEntries(),"background events for quantile",quantiles[q]
 
- print "TOTAL SIGNAL EVENTS",histos_sig[-1].GetEntries()
- print "TOTAL BACKGROUND EVENTS",histos_qcd[-1].GetEntries()
+ sum_n_histos_qcd = sum([h.GetEntries() for h in histos_qcd[:-1]])
+ sum_n_histos_sig = sum([h.GetEntries() for h in histos_sig[:-1]])
+ print "TOTAL SIGNAL EVENTS",histos_sig[-1].GetEntries(), " (sum histos = )", sum_n_histos_sig
+ print "TOTAL BACKGROUND EVENTS",histos_qcd[-1].GetEntries(), " (sum histos = )", sum_n_histos_qcd
  print
 
  ################################### NOW MAKE THE FITS ###################################
@@ -342,30 +357,27 @@ if __name__ == "__main__":
   print "########## FIT SIGNAL AND SAVE PARAMETERS ############"
   sig_outfile = ROOT.TFile("sig_fit_%s.root"%q,"RECREATE")
  
-  ### create signal model: gaussian centered at mass-center with sigma in {2%,10%of mass center} + crystal ball for asymmetric tail
+  ### create signal model: gaussian centered at mass-center with sigma in {2%,10%of mass center} + crystal ball for asymmetric tail (pure functional form)
 
+  # setup fit parameters according to resonance type
+  if sigRes == "na": # fit narrow signal
+    print('===> fitting narrow signal model')
+    alpha = (0.6, 0.45, 1.05)
+  else: # else fit broad signal
+    print('===> fitting broad signal model')
+    alpha = None #use default alpha 
+  
   fitter=Fitter(['mjj_fine'])
-  # if narrow signal, fit narrow model
-  if sigRes == "na":
-    fitter.signalResonance('model_s',"mjj_fine",mass)
-  # else fit broad signal
-  else:
-    # set crystal ball function params
-    alpha_ini=0.85 
-    sign_ini=0.5 
-    sign_n_stop=20
-    # make gauss sigma broader
-    sigma = (mass*0.1, mass*0.02, mass*0.2)
-    fitter.signalResonance('model_s',"mjj_fine", mass=mass, alpha_ini=alpha_ini, sign_ini=sign_ini, sig_n_stop=sig_n_stop, sigma=sigma)
+  fitter.signalResonance('model_s',"mjj_fine", mass=mass, alpha=alpha)
 
-  ### fit the signal model to sig histogram data
+  ### fit the signal model to actual sig histogram data
 
   fitter.w.var("MH").setVal(mass)
   fitter.importBinnedData(histos_sig[iq],['mjj_fine'],'data')
   fres = fitter.fit('model_s','data',[ROOT.RooFit.Save(1)])
   fres.Print()
 
-  ### compute chi-square of compatibility of signal-histogram and signal model for sanity check
+  ### compute chi-square of compatibility of signal-histogram and signal model for sanity ch05eck
   # plot fit result to signal_fit_q.png for each quantile q
  
   mjj_fine = fitter.getVar('mjj_fine')
@@ -401,21 +413,21 @@ if __name__ == "__main__":
   print "############# FIT BACKGROUND AND SAVE PARAMETERS ###########"
   qcd_outfile = ROOT.TFile('qcd_fit_%s.root'%q,'RECREATE')
 
-  ### create signal model: 2-parameter (p1 & p2) exponential
+  ### create background model: 2-parameter (p1 & p2) exponential (generic functional form, not based on data)
  
   fitter_QCD=Fitter(['mjj_fine'])
   fitter_QCD.qcdShape('model_b','mjj_fine',nPars)
   
-  ### fit background model to qcd histogram data
+  ### fit background model to actual qcd histogram data (all cuts applied)
 
-  fitter_QCD.importBinnedData(histos_qcd[iq],['mjj_fine'],'data_qcd') # ??? Fit to qcd histograms (<- we know here that this is qcd?!)
+  fitter_QCD.importBinnedData(histos_qcd[iq],['mjj_fine'],'data_qcd')
   fres = fitter_QCD.fit('model_b','data_qcd',[ROOT.RooFit.Save(1)])
   fres.Print()
  
   ### compute chi-square of compatibility of qcd-histogram and background model for sanity check
   # plot fit result to qcd_fit_q_binned.png for each quantile q
 
-  chi2_fine = fitter_QCD.projection("model_b","data_qcd","mjj_fine","qcd_fit_%s.png"%q,0,True) # ??? chi2 => sanity check
+  chi2_fine = fitter_QCD.projection("model_b","data_qcd","mjj_fine","qcd_fit_%s.png"%q,0,True) # chi2 => sanity check
   chi2_binned = fitter_QCD.projection("model_b","data_qcd","mjj_fine","qcd_fit_%s_binned.png"%q,roobins,True)
 
   ### write background histogram
@@ -423,7 +435,7 @@ if __name__ == "__main__":
   qcd_outfile.cd()
   histos_qcd[iq].Write() # ??? => write histo into qcd_outfile
 
-  ### plot background data, fit and 
+  ### plot background data with fit 
  
   mjj = fitter_QCD.getVar('mjj_fine')
   mjj.setBins(bins_fine)
@@ -495,23 +507,23 @@ if __name__ == "__main__":
   model_b.Print("v")
   model_s.Print("v")
     
-  print "Generate",histos_qcd[iq].Integral(),"background events from model_b" # ??? taking qcd number events as they are
+  print "Generate",histos_qcd[iq].Integral(),"background events from model_b" # ??? taking qcd number events as they are => all cuts applied (!!!)
   dataqcd = model_b.generateBinned(ROOT.RooArgSet(mjj),histos_qcd[iq].Integral())
   hdataqcd = dataqcd.createHistogram("mjj_fine")
   hdataqcd.SetName("mjj_generate_qcd_%s"%q)
 
-  # signal xsec set to 0 by default, so hdatasig filled with qcd histogram values !
+  # signal xsec set to 0 by default, so hdatasig hist not filled !
 
   if xsec != 0:
    print "Generate",int(histos_sig[iq].Integral()*xsec),"signal events from model_s"  # ??? taking sig number events scaled by xsec
    datasig = model_s.generateBinned(ROOT.RooArgSet(mjj),int(histos_sig[iq].Integral()*xsec))
    hdatasig = datasig.createHistogram("mjj_fine")
-  else:
+  else: # just set same bins as qcd hist, do not fill!
    hdatasig = ROOT.TH1F("mjj_generate_sig_%s"%q,"mjj_generate_sig_%s"%q,histos_qcd[iq].GetNbinsX(),histos_qcd[iq].GetXaxis().GetXmin(),histos_qcd[iq].GetXaxis().GetXmax())
 
   hdatasig.SetName("mjj_generate_sig_%s"%q)
   
-  # ??? signal+background fit (total histo)
+  # signal+background fit (total histo) => since signal xsec = 0 per default, this is only background data & fit!
 
   sb_outfile = ROOT.TFile('sb_fit_%s.root'%q,'RECREATE')
   sb_outfile.cd()
@@ -536,16 +548,21 @@ if __name__ == "__main__":
   card=DataCardMaker(q)
  
   card.addSignalShape('model_signal_mjj','mjj','sig_fit_%s.root'%q,{'CMS_scale_j':1.0},{'CMS_res_j':1.0})
-  # TODO: check numbers!
-  # sig_xsec = 1000fb, lumi = qcd SR lumi (although signal in SR AND SB???), sig_gen_events ~ 80% of 900K signal
-  # c = number of signal events expected with sig_xsec 1000 fb / number of signals generated = < 1
+  
+  ### !!! compute amount of signal to be injected 
+  
+  # sig_xsec = 1000fb, lumi = qcd SR lumi, sig_gen_events ~ 80% of 900K signal => have to take signal SR share ???
+  # constant = number of signal events expected with sig_xsec 1000 fb / number of signals generated = < 1 == scaling factor for histogram data
   constant = sig_xsec*lumi/sig_gen_events  
   if xsec==0: constant = 1.0*constant
   else: constant=xsec*constant
+
+  # add signal pdf from model_s, taking integral number of events with constant scaling factor for sig
   card.addFixedYieldFromFile('model_signal_mjj',0,'sig_fit_%s.root'%q,histos_sig[iq].GetName(),constant=constant)
   card.addSystematic("CMS_scale_j","param",[0.0,0.012])
   card.addSystematic("CMS_res_j","param",[0.0,0.08]) 
  
+  # add bg pdf
   card.addQCDShapeNoTag('model_qcd_mjj','mjj','qcd_fit_%s.root'%q,nPars)
   card.addFloatingYield('model_qcd_mjj',1,'qcd_fit_%s.root'%q,histos_qcd[iq].GetName())
   for i in range(1,nPars+1): card.addSystematic("CMS_JJ_p%i"%i,"flatParam",[])
@@ -556,7 +573,9 @@ if __name__ == "__main__":
   card.delete()
 
   # run combine on datacard -> create workspaces workspace_JJ_0.0_quantile.root
-  cmd = 'text2workspace.py datacard_JJ_{label}.txt -o workspace_JJ_{xsec}_{label}.root && combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} -n significance_{xsec}_{label} && combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} --pvalue -n pvalue_{xsec}_{label}'.format(mass=mass,xsec=xsec,label=q)
+  cmd = 'text2workspace.py datacard_JJ_{label}.txt -o workspace_JJ_{xsec}_{label}.root && ' \
+        'combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} -n significance_{xsec}_{label} && ' \
+        'combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} --pvalue -n pvalue_{xsec}_{label}'.format(mass=mass,xsec=xsec,label=q)
   print cmd
   os.system(cmd)
   

@@ -146,7 +146,7 @@ class DataCardMaker:
         pdfName="_".join([name,self.tag])
         f=ROOT.TFile(filename)
         histogram=f.Get(histoName)
-        events=histogram.Integral()*self.luminosity*constant
+        events=histogram.Integral()*self.luminosity*constant # !!!
         self.contributions.append({'name':name,'pdf':pdfName,'ID':ID,'yield':events})
 
     def addFloatingYield(self,name,ID,filename,histoName,mini=0,maxi=1e+9,constant=False):

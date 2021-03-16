@@ -7,4 +7,5 @@
 *.c
 *results/
 *.sh
+.sys.*
 
