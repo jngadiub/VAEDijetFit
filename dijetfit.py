@@ -246,6 +246,7 @@ if __name__ == "__main__":
  parser.add_option("--sig","--sig",dest="sigFile",default='signal.h5',help="Signal h5 file")
  parser.add_option("-l","--load_data",dest="load_data",action="store_true",help="Load orthogonal data")
  parser.add_option("--res", "--res", dest="sigRes", type="choice", choices=("na", "br"), default="na", help="resonance type: narrow [na] or broad [br]")
+ parser.add_option("--out", '--out', dest="outDir", type=str, default="./", help='output directory to store all results (plots, datacards, root files, etc.)')
  (options,args) = parser.parse_args()
   
  xsec = options.xsec
