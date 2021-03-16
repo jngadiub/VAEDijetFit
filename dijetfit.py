@@ -2,6 +2,7 @@ import h5py, math, commands, random
 from array import array
 import numpy as np
 import time, sys, os, optparse, json
+import pathlib2
 
 import ROOT
 ROOT.gStyle.SetOptStat(0)
@@ -27,7 +28,7 @@ def get_generated_events(filename):
   
  return N 
                                                                
-def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_name,chi2,ndof,canvname):
+def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_name,chi2,ndof,canvname, outDir):
 
  c1 =ROOT.TCanvas("c1","",800,800)
  c1.SetLogy()
@@ -131,7 +132,7 @@ def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_name,chi2,ndof,canvna
  line2.Draw("same")    
  c1.Update()
 
- canvname+='.pdf'
+ canvname = os.path.join(outDir, canvname+'.pdf')
  c1.SaveAs(canvname)
  c1.SaveAs(canvname.replace("pdf","C"),"C")
 
@@ -231,6 +232,11 @@ def checkSBFit(filename,quantile,roobins,plotname):
  #chi2,ndof = calculateChi2(histos_qcd[index],nPars[index],hpull)
  PlotFitResults(frame,fres.GetName(),nPars,frame3,"data_obs","model_s",chi2,ndof,'sbFit_'+plotname)
 
+
+def prepare_output_directory(outDir, cleanup=True):
+    pathlib2.Path(outDir).mkdir(parents=True, exist_ok=True)
+    os.system('rm '+outDir+'/{*.root,*.txt,*.C}') 
+
     
 if __name__ == "__main__":
 
@@ -251,7 +257,9 @@ if __name__ == "__main__":
   
  xsec = options.xsec
  mass = options.mass
- sigRes = options.sigRes 
+ sigRes = options.sigRes
+ outDir = options.outDir
+ prepare_output_directory(outDir)
  binsx = [1126,1181,1246,1313,1383,1455,1530,1607,1687,1770,1856,1945,2037,2132,2231,2332,2438,2546,2659,2775,2895,3019,3147,3279,3416,3558,3704,3854,4010,4171,4337,4509,4686,4869,5058,5253,5500,5663,5877,6099,6328,6564,6808]
  shift = 1200 - binsx[0] # shift to mjj cut
  binsx = [e+shift for e in binsx]
@@ -290,7 +298,6 @@ if __name__ == "__main__":
  histos_sig = []
  histos_qcd = []
 
- import ipdb; ipdb.set_trace()
  if not options.load_data:
  
   #Signal data preparation 
@@ -312,15 +319,15 @@ if __name__ == "__main__":
    print "************ Found",histos_qcd[-1].GetEntries(),"background events for quantile",q
    print
   
-  for h in histos_sig: h.SaveAs("data_"+h.GetName()+".root")
-  for h in histos_qcd: h.SaveAs("data_"+h.GetName()+".root")
+  for h in histos_sig: h.SaveAs(os.path.join(outDir, "data_"+h.GetName()+".root"))
+  for h in histos_qcd: h.SaveAs(os.path.join(outDir, "data_"+h.GetName()+".root"))
  
  else: #let's make it faster if you have run once already!
   print('=== loading histogram data from file ===')
   #Load signal data
   for q in quantiles:
   
-   fname = "data_mjj_sig_%s.root"%q
+   fname = os.path.join(outDir, "data_mjj_sig_%s.root"%q)
    q_datafile = ROOT.TFile.Open(fname,'READ')
    histos_sig.append(q_datafile.Get("mjj_sig_%s"%q))
    histos_sig[-1].SetDirectory(ROOT.gROOT)
@@ -329,7 +336,7 @@ if __name__ == "__main__":
   #Load background data
   for q in quantiles:
      
-   fname = "data_mjj_qcd_%s.root"%q
+   fname = os.path.join(outDir, "data_mjj_qcd_%s.root"%q)
    q_datafile = ROOT.TFile.Open(fname,'READ')
    histos_qcd.append(q_datafile.Get("mjj_qcd_%s"%q))
    histos_qcd[-1].SetDirectory(ROOT.gROOT)
@@ -350,13 +357,13 @@ if __name__ == "__main__":
     - fit signal shape -> gauss mu & std ??
     - fit background shape -> exponential lambda ??
     - chi2 ??
- '''
+ ''' 
 
  cmdCombine = 'combineCards.py '
  for iq,q in enumerate(quantiles):
   
   print "########## FIT SIGNAL AND SAVE PARAMETERS ############"
-  sig_outfile = ROOT.TFile("sig_fit_%s.root"%q,"RECREATE")
+  sig_outfile = ROOT.TFile(os.path.join(outDir, "sig_fit_%s.root"%q),"RECREATE")
  
   ### create signal model: gaussian centered at mass-center with sigma in {2%,10%of mass center} + crystal ball for asymmetric tail (pure functional form)
 
@@ -412,7 +419,7 @@ if __name__ == "__main__":
   print
   print
   print "############# FIT BACKGROUND AND SAVE PARAMETERS ###########"
-  qcd_outfile = ROOT.TFile('qcd_fit_%s.root'%q,'RECREATE')
+  qcd_outfile = ROOT.TFile(os.path.join(outDir, 'qcd_fit_%s.root'%q),'RECREATE')
 
   ### create background model: 2-parameter (p1 & p2) exponential (generic functional form, not based on data)
  
@@ -470,7 +477,7 @@ if __name__ == "__main__":
 
   # plot full qcd fit results with pull factors to mjj_qcd_q.pdf for each quantile q
 
-  PlotFitResults(frame,fres.GetName(),nPars,framePulls,"data_qcd","model_b",chi2,ndof,histos_qcd[iq].GetName())
+  PlotFitResults(frame,fres.GetName(),nPars,framePulls,"data_qcd","model_b",chi2,ndof,histos_qcd[iq].GetName(), outDir)
  
   # write qcd model with params
 
@@ -497,6 +504,9 @@ if __name__ == "__main__":
   print
   print 
   print "############# GENERATE SIGNAL+BACKGROUND DATA FROM PDFs ###########"
+
+  import ipdb; ipdb.set_trace()
+
   
   f = ROOT.TFile("/tmp/%s/cache%i.root"%(commands.getoutput("whoami"),random.randint(0, 1e+6)),"RECREATE")
   f.cd()

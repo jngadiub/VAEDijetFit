@@ -184,7 +184,7 @@ if __name__ == "__main__":
         sys.exit()
 
     #first make workspaces (signal xsec set default to 0! -> assuming 1000fb of signal -> deriving sig histo scaling constant from that (???))
-    cmd = "python dijetfit.py -i {inputdir} --sig {sigfile} --qcd {qcdfile} --xsec 0.0 -M {mass} --res {res} --out {run_str}".format(inputdir=inputDir,sigfile=sigFile,qcdfile=qcdFile,mass=mass, res=sigRes, run_str=run_str)
+    cmd = "python dijetfit.py -i {inputdir} --sig {sigfile} --qcd {qcdfile} --xsec 0.0 -M {mass} --res {res} --out {run_str}".format(inputdir=inputDir,sigfile=sigFile,qcdfile=qcdFile,mass=mass, res=sigRes, run_str=run_str[1:])
     print cmd
     os.system(cmd)
 
