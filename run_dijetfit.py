@@ -125,7 +125,7 @@ def plotPValue(xsec_scan, quantiles, plot_name_suffix=''):
     graphs[0].Draw('LP')
     for g in range(1,len(graphs)): graphs[g].Draw("LPsame")
     for l in lines:
-        print l
+        print(l)
         l.Draw("same")
 
     for b in bans: b.Draw()
