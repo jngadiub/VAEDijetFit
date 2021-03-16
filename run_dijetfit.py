@@ -44,9 +44,7 @@ def get_canvas(cname):
    
    return canvas
 
-def make_run_str(signal_name, signal_xsec=10, run_n=0):
-    return '_' + signal_name[:-3] + '_xsec' + str(signal_xsec) + '_run' + str(run_n) 
-   
+
 def plotPValue(xsec_scan, quantiles, plot_name_suffix=''):
 
     xmin = xsec_scan[0]*1000.
