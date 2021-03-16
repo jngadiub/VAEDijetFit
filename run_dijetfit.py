@@ -14,7 +14,7 @@ def get_xsec_scan(filename):
         data = json.load(f)
 
     for k in data.keys():
-        if (k in filename or k.replace('_EXT','') in filename) and not 'SIDEBAND' in k: return data[k][2]
+        if k in filename or k.replace('_EXT','') in filename: return data[k][2]
    
 def get_canvas(cname):
 
