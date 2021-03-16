@@ -536,7 +536,7 @@ if __name__ == "__main__":
   
   # signal+background fit (total histo) => since signal xsec = 0 per default, this is only background data & fit!
 
-  sb_outfile = ROOT.TFile('sb_fit_%s.root'%q,'RECREATE')
+  sb_outfile = ROOT.TFile(os.path.join(outDir, 'sb_fit_%s.root'%q),'RECREATE')
   sb_outfile.cd()
   htot = ROOT.TH1F()
   htot = hdataqcd.Clone("mjj_generate_tot_%s"%q)
@@ -556,7 +556,7 @@ if __name__ == "__main__":
   print
   print "############ MAKE PER CATEGORY DATACARD AND WORKSPACE AND RUN COMBINE #############"
  
-  card=DataCardMaker(q)
+  card=DataCardMaker(q, outDir)
  
   card.addSignalShape('model_signal_mjj','mjj','sig_fit_%s.root'%q,{'CMS_scale_j':1.0},{'CMS_res_j':1.0})
   
