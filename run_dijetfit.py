@@ -14,7 +14,7 @@ def get_xsec_scan(filename):
         data = json.load(f)
 
     for k in data.keys():
-        if (k in filename or k.replace('_EXT','') in filename) and not 'SIDEBAND' in k: return data[k][2]
+        if k in filename or k.replace('_EXT','') in filename: return data[k][2]
    
 def get_canvas(cname):
 
@@ -44,10 +44,8 @@ def get_canvas(cname):
    
    return canvas
 
-def make_run_str(signal_name, signal_xsec=10, run_n=0):
-    return '_' + signal_name[:-3] + '_xsec' + str(signal_xsec) + '_run' + str(run_n) 
-   
-def plotPValue(xsec_scan, quantiles, plot_name_suffix=''):
+
+def plotPValue(xsec_scan, quantiles, plot_name_suffix='', out_dir=''):
 
     xmin = xsec_scan[0]*1000.
     xmax = (xsec_scan[-1]+xsec_scan[-1]*0.1)*1000.
@@ -76,7 +74,7 @@ def plotPValue(xsec_scan, quantiles, plot_name_suffix=''):
         ys = array('d', [])
         yp = array('d',[])
 
-        fin = open('results_%s.txt'%q,'r')
+        fin = open(os.path.join(out_dir,'results_%s.txt'%q), 'r')
         for l in fin.readlines():
             l = l.split('\t')
             yp.append(float(l[1]))
@@ -127,7 +125,7 @@ def plotPValue(xsec_scan, quantiles, plot_name_suffix=''):
     graphs[0].Draw('LP')
     for g in range(1,len(graphs)): graphs[g].Draw("LPsame")
     for l in lines:
-        print l
+        print(l)
         l.Draw("same")
 
     for b in bans: b.Draw()
@@ -143,7 +141,7 @@ def plotPValue(xsec_scan, quantiles, plot_name_suffix=''):
     canv.cd()
     canv.Update()
  
-    canv.SaveAs("pvalue"+plot_name_suffix+".png")
+    canv.SaveAs(os.path.join(out_dir, "pvalue"+plot_name_suffix+".png"))
     time.sleep(10)
 
 
@@ -172,6 +170,7 @@ if __name__ == "__main__":
 
     # distinctive run string
     run_str = make_run_str(signal_name=options.sigFile, signal_xsec=options.sigXsec, run_n=options.run_n)
+    out_dir = run_str[1:]
 
     if len(xsec) == 0:
         print "ERROR: set the cross sections to scan for signal",sigFile,"in the files_count.json file!"
@@ -186,7 +185,7 @@ if __name__ == "__main__":
         sys.exit()
 
     #first make workspaces (signal xsec set default to 0! -> assuming 1000fb of signal -> deriving sig histo scaling constant from that (???))
-    cmd = "python dijetfit.py -i {inputdir} --sig {sigfile} --qcd {qcdfile} --xsec 0.0 -M {mass} --res {res}".format(inputdir=inputDir,sigfile=sigFile,qcdfile=qcdFile,mass=mass, res=sigRes)
+    cmd = "python dijetfit.py -i {inputdir} --sig {sigfile} --qcd {qcdfile} --xsec 0.0 -M {mass} --res {res} --out {out_dir}".format(inputdir=inputDir, sigfile=sigFile, qcdfile=qcdFile, mass=mass, res=sigRes, out_dir=out_dir)
     print cmd
     os.system(cmd)
 
@@ -198,28 +197,28 @@ if __name__ == "__main__":
     for q in quantiles:
         ysig[q] = []
         ypvalue[q] = []
-        outfiles.append(open('results_%s.txt'%q,'w'))
+        outfiles.append(open(out_dir+'/results_%s.txt'%q,'w'))
 
     # [0.0,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1] (of 1 pico-barn)
     for x in xsec:
         for iq,q in enumerate(quantiles):
      
-            cmd = 'combine -M Significance workspace_JJ_0.0_{label}.root -m {mass} --expectSignal={xsec} -n significance_{xsec}_{label} -t -1'.format(xsec=x,label=q,mass=int(mass))
+            cmd = 'cd {out_dir} && combine -M Significance workspace_JJ_0.0_{label}.root -m {mass} --expectSignal={xsec} -n significance_{xsec}_{label} -t -1'.format(out_dir=out_dir, xsec=x, label=q, mass=int(mass))
             print cmd
             os.system(cmd)
 
-            cmd = 'combine -M Significance workspace_JJ_0.0_{label}.root -m {mass} --expectSignal={xsec} -n pvalue_{xsec}_{label} -t -1 --pvalue'.format(xsec=x,label=q,mass=int(mass))
+            cmd = 'cd {out_dir} && combine -M Significance workspace_JJ_0.0_{label}.root -m {mass} --expectSignal={xsec} -n pvalue_{xsec}_{label} -t -1 --pvalue'.format(out_dir=out_dir, xsec=x, label=q, mass=int(mass))
             print cmd
             os.system(cmd)
                 
-            tf = ROOT.TFile.Open('higgsCombinesignificance_{xsec}_{label}.Significance.mH{mass}.root'.format(xsec=x,label=q,mass=int(mass)),'READ')
+            tf = ROOT.TFile.Open('{out_dir}/higgsCombinesignificance_{xsec}_{label}.Significance.mH{mass}.root'.format(out_dir=out_dir, xsec=x,label=q,mass=int(mass)),'READ')
             tree = tf.limit
             tree.GetEntry(0)         
             ysig[q].append(tree.limit)
             print "Xsec",x,"quantile",q,"significance",ysig[q][-1]       
             tf.Close()
 
-            tf = ROOT.TFile.Open('higgsCombinepvalue_{xsec}_{label}.Significance.mH{mass}.root'.format(xsec=x,label=q,mass=int(mass)),'READ')
+            tf = ROOT.TFile.Open('{out_dir}/higgsCombinepvalue_{xsec}_{label}.Significance.mH{mass}.root'.format(out_dir=out_dir, xsec=x,label=q,mass=int(mass)),'READ')
             tree = tf.limit
             tree.GetEntry(0)         
             ypvalue[q].append(tree.limit)        
@@ -231,37 +230,37 @@ if __name__ == "__main__":
  
     ysig['combo'] = []
     ypvalue['combo'] = []
-    outfiles.append(open('results_final.txt','w'))
+    outfiles.append(open(out_dir+'/results_final.txt','w'))
 
     for x in xsec:
 
-        cmd = 'combine -M Significance workspace_0.0_{label}.root -m {mass} --expectSignal={xsec} -n significance_{xsec} -t -1'.format(xsec=x,label='final',mass=int(mass))
+        cmd = 'cd {out_dir} && combine -M Significance workspace_0.0_{label}.root -m {mass} --expectSignal={xsec} -n significance_{xsec} -t -1'.format(out_dir=out_dir, xsec=x,label='final',mass=int(mass))
         print cmd
         os.system(cmd)
 
-        cmd = 'combine -M Significance workspace_0.0_{label}.root -m {mass} --expectSignal={xsec} -n pvalue_{xsec} -t -1 --pvalue'.format(xsec=x,label='final',mass=int(mass))
+        cmd = 'cd {out_dir} && combine -M Significance workspace_0.0_{label}.root -m {mass} --expectSignal={xsec} -n pvalue_{xsec} -t -1 --pvalue'.format(out_dir=out_dir, xsec=x,label='final',mass=int(mass))
         print cmd
         os.system(cmd)
             
-        tf = ROOT.TFile.Open('higgsCombinesignificance_{xsec}.Significance.mH{mass}.root'.format(xsec=x,mass=int(mass)),'READ')
+        tf = ROOT.TFile.Open('{out_dir}/higgsCombinesignificance_{xsec}.Significance.mH{mass}.root'.format(out_dir=out_dir, xsec=x,mass=int(mass)),'READ')
         tree = tf.limit
         tree.GetEntry(0)             
         ysig['combo'].append(tree.limit)             
         print "Xsec",x,"COMBO significance",ysig['combo'][-1]        
         tf.Close()
 
-        tf = ROOT.TFile.Open('higgsCombinepvalue_{xsec}.Significance.mH{mass}.root'.format(xsec=x,mass=int(mass)),'READ')
+        tf = ROOT.TFile.Open('{out_dir}/higgsCombinepvalue_{xsec}.Significance.mH{mass}.root'.format(out_dir=out_dir, xsec=x,mass=int(mass)),'READ')
         tree = tf.limit
         tree.GetEntry(0)             
         ypvalue['combo'].append(tree.limit)          
         tf.Close()
 
-        outfiles[-1].write('{xsec}\t{pvalue}\t{sig}\n'.format(xsec=x,pvalue=ypvalue['combo'][-1],sig=ysig['combo'][-1]))  
+        outfiles[-1].write('{xsec}\t{pvalue}\t{sig}\n'.format(xsec=x, pvalue=ypvalue['combo'][-1], sig=ysig['combo'][-1]))  
  
     outfiles[-1].close()
     
     print ysig
     print ypvalue
 
-    plotPValue(xsec, quantiles + ['final'], run_str)
+    plotPValue(xsec, quantiles + ['final'], run_str, out_dir=run_str[1:])
   

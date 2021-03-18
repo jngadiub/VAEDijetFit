@@ -2,14 +2,16 @@ import ROOT
 ROOT.gSystem.Load("libHiggsAnalysisCombinedLimit")
 import json
 import sys
+import os
 from array import array
 ROOT.RooMsgService.instance().setGlobalKillBelow(ROOT.RooFit.WARNING)
 
 class DataCardMaker:
-    def __init__(self,tag):
+    def __init__(self,tag, outDir):
         self.systematics=[]
         self.tag="JJ"+"_"+tag
-        self.rootFile = ROOT.TFile("datacardInputs_%s.root"%self.tag,"RECREATE")
+        self.outDir = outDir
+        self.rootFile = ROOT.TFile(os.path.join(outDir, "datacardInputs_%s.root"%self.tag),"RECREATE")
         self.rootFile.cd()
         self.w=ROOT.RooWorkspace("w","w")
         self.luminosity = 1.0
@@ -24,14 +26,15 @@ class DataCardMaker:
       
     def makeCard(self):
 
-        f = open("datacard_"+self.tag+'.txt','w')
+        f = open(os.path.join(self.outDir,"datacard_"+self.tag+'.txt'),'w')
+        datacard_inputs_file = "datacardInputs_"+self.tag
         f.write('imax 1\n')
         f.write('jmax {n}\n'.format(n=len(self.contributions)-1))
         f.write('kmax *\n')
         f.write('-------------------------\n')
         for c in self.contributions:
-            f.write('shapes {name} {channel} {file}.root w:{pdf}\n'.format(name=c['name'],channel=self.tag,file="datacardInputs_"+self.tag,pdf=c['pdf']))
-        f.write('shapes {name} {channel} {file}.root w:{name}\n'.format(name="data_obs",channel=self.tag,file="datacardInputs_"+self.tag))
+            f.write('shapes {name} {channel} {file}.root w:{pdf}\n'.format(name=c['name'], channel=self.tag, file=datacard_inputs_file, pdf=c['pdf']))
+        f.write('shapes {name} {channel} {file}.root w:{name}\n'.format(name="data_obs", channel=self.tag, file=datacard_inputs_file))
         f.write('-------------------------\n')
         f.write('bin '+self.tag+'\n')
         f.write('observation  -1\n')
@@ -149,6 +152,7 @@ class DataCardMaker:
         events=histogram.Integral()*self.luminosity*constant # !!!
         self.contributions.append({'name':name,'pdf':pdfName,'ID':ID,'yield':events})
 
+    # add a floatable number of events value
     def addFloatingYield(self,name,ID,filename,histoName,mini=0,maxi=1e+9,constant=False):
         pdfName="_".join([name,self.tag])
         pdfNorm="_".join([name,self.tag,"norm"])
@@ -160,7 +164,7 @@ class DataCardMaker:
             self.w.var(pdfNorm).setConstant(1)
         self.contributions.append({'name':name,'pdf':pdfName,'ID':ID,'yield':1.0})
                 
-    def addSignalShape(self,name,variable,jsonFile,scale ={},resolution={}):
+    def addSignalShape(self, name, variable, jsonFile, scale ={}, resolution={}):
     
         pdfName="_".join([name,self.tag])
         

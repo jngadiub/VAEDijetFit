@@ -2,6 +2,7 @@ import h5py, math, commands, random
 from array import array
 import numpy as np
 import time, sys, os, optparse, json
+import pathlib2
 
 import ROOT
 ROOT.gStyle.SetOptStat(0)
@@ -27,7 +28,7 @@ def get_generated_events(filename):
   
  return N 
                                                                
-def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_name,chi2,ndof,canvname):
+def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_name,chi2,ndof,canvname, out_dir):
 
  c1 =ROOT.TCanvas("c1","",800,800)
  c1.SetLogy()
@@ -131,7 +132,7 @@ def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_name,chi2,ndof,canvna
  line2.Draw("same")    
  c1.Update()
 
- canvname+='.pdf'
+ canvname = os.path.join(out_dir, canvname+'.pdf')
  c1.SaveAs(canvname)
  c1.SaveAs(canvname.replace("pdf","C"),"C")
 
@@ -194,7 +195,7 @@ def makeData(options, dataFile, q, iq, quantiles, hdata, minMJJ=0, maxMJJ=1e+04)
    #if data[e][mjj_idx] < minMJJ or data[e][mjj_idx] > maxMJJ: continue
    if data[e][sel_idx_iq]==0 and data[e][sel_idx]==1: hdata.Fill(data[e][mjj_idx])
 
-def checkSBFit(filename,quantile,roobins,plotname):
+def checkSBFit(filename,quantile,roobins,plotname, out_dir):
  
  fin = ROOT.TFile.Open(filename,'READ')
  workspace = fin.w
@@ -229,7 +230,13 @@ def checkSBFit(filename,quantile,roobins,plotname):
  
  data.plotOn(frame,ROOT.RooFit.DataError(ROOT.RooAbsData.Poisson), ROOT.RooFit.Binning(roobins),ROOT.RooFit.Name("data_obs"),ROOT.RooFit.XErrorSize(0))
  #chi2,ndof = calculateChi2(histos_qcd[index],nPars[index],hpull)
- PlotFitResults(frame,fres.GetName(),nPars,frame3,"data_obs","model_s",chi2,ndof,'sbFit_'+plotname)
+ PlotFitResults(frame,fres.GetName(),nPars,frame3,"data_obs","model_s",chi2,ndof, 'sbFit_'+plotname, out_dir)
+
+
+def prepare_output_directory(out_dir, clean_up=True):
+    pathlib2.Path(out_dir).mkdir(parents=True, exist_ok=True)
+    if clean_up:
+        os.system('rm '+out_dir+'/{*.root,*.txt,*.C}') 
 
     
 if __name__ == "__main__":
@@ -245,12 +252,15 @@ if __name__ == "__main__":
  parser.add_option("--qcd","--qcd",dest="qcdFile",default='qcd.h5',help="QCD h5 file")
  parser.add_option("--sig","--sig",dest="sigFile",default='signal.h5',help="Signal h5 file")
  parser.add_option("-l","--load_data",dest="load_data",action="store_true",help="Load orthogonal data")
- parser.add_option("--res", "--res", dest="sigRes", type="choice", choices=("na", "br"), default="na", help="resonance type: narrow [na] or broad [br]")
+ parser.add_option("--res", "--res", dest="sig_res", type="choice", choices=("na", "br"), default="na", help="resonance type: narrow [na] or broad [br]")
+ parser.add_option("--out", '--out', dest="out_dir", type=str, default="./", help='output directory to store all results (plots, datacards, root files, etc.)')
  (options,args) = parser.parse_args()
   
  xsec = options.xsec
  mass = options.mass
- sigRes = options.sigRes 
+ sig_res = options.sig_res
+ out_dir = options.out_dir
+ prepare_output_directory(out_dir)
  binsx = [1126,1181,1246,1313,1383,1455,1530,1607,1687,1770,1856,1945,2037,2132,2231,2332,2438,2546,2659,2775,2895,3019,3147,3279,3416,3558,3704,3854,4010,4171,4337,4509,4686,4869,5058,5253,5500,5663,5877,6099,6328,6564,6808]
  shift = 1200 - binsx[0] # shift to mjj cut
  binsx = [e+shift for e in binsx]
@@ -261,7 +271,7 @@ if __name__ == "__main__":
  nPars = 2 # DO THESE NEED TO BE DIFFERENT DEPENDING ON QUANTILE???
 
  # change signal fit intervall according to resonance breadth
- if sigRes == "na":
+ if sig_res == "na":
     sig_mjj_limits = (0.8*mass,1.2*mass)
  else:
     sig_mjj_limits = (0.4*mass,1.4*mass)
@@ -275,7 +285,7 @@ if __name__ == "__main__":
  qcd_gen_events = qr_test_share*get_generated_events(options.qcdFile) # 80% of SR qcd events => why applying dEta (SR) cut here but not all the other cuts??
  sig_xsec = 1000. # metric [fb] = 1 [pb]???
  sig_gen_events = qr_test_share*get_generated_events(options.sigFile) # 80% of signal events (but this corresponds to an enormous xsec?!)
- lumi = qcd_gen_events/qcd_xsec # ??? qcd SR lumi 51
+ lumi = qcd_gen_events/qcd_xsec # qcd SR lumi 51
   
  ################################### FIRST PREPARE DATA ###################################
  '''
@@ -289,7 +299,6 @@ if __name__ == "__main__":
  histos_sig = []
  histos_qcd = []
 
- import ipdb; ipdb.set_trace()
  if not options.load_data:
  
   #Signal data preparation 
@@ -311,15 +320,15 @@ if __name__ == "__main__":
    print "************ Found",histos_qcd[-1].GetEntries(),"background events for quantile",q
    print
   
-  for h in histos_sig: h.SaveAs("data_"+h.GetName()+".root")
-  for h in histos_qcd: h.SaveAs("data_"+h.GetName()+".root")
+  for h in histos_sig: h.SaveAs(os.path.join(out_dir, "data_"+h.GetName()+".root"))
+  for h in histos_qcd: h.SaveAs(os.path.join(out_dir, "data_"+h.GetName()+".root"))
  
  else: #let's make it faster if you have run once already!
   print('=== loading histogram data from file ===')
   #Load signal data
   for q in quantiles:
   
-   fname = "data_mjj_sig_%s.root"%q
+   fname = os.path.join(out_dir, "data_mjj_sig_%s.root"%q)
    q_datafile = ROOT.TFile.Open(fname,'READ')
    histos_sig.append(q_datafile.Get("mjj_sig_%s"%q))
    histos_sig[-1].SetDirectory(ROOT.gROOT)
@@ -328,7 +337,7 @@ if __name__ == "__main__":
   #Load background data
   for q in quantiles:
      
-   fname = "data_mjj_qcd_%s.root"%q
+   fname = os.path.join(out_dir, "data_mjj_qcd_%s.root"%q)
    q_datafile = ROOT.TFile.Open(fname,'READ')
    histos_qcd.append(q_datafile.Get("mjj_qcd_%s"%q))
    histos_qcd[-1].SetDirectory(ROOT.gROOT)
@@ -349,18 +358,17 @@ if __name__ == "__main__":
     - fit signal shape -> gauss mu & std ??
     - fit background shape -> exponential lambda ??
     - chi2 ??
- '''
+ ''' 
 
- cmdCombine = 'combineCards.py '
  for iq,q in enumerate(quantiles):
   
   print "########## FIT SIGNAL AND SAVE PARAMETERS ############"
-  sig_outfile = ROOT.TFile("sig_fit_%s.root"%q,"RECREATE")
+  sig_outfile = ROOT.TFile(os.path.join(out_dir, "sig_fit_%s.root"%q),"RECREATE")
  
   ### create signal model: gaussian centered at mass-center with sigma in {2%,10%of mass center} + crystal ball for asymmetric tail (pure functional form)
 
   # setup fit parameters according to resonance type
-  if sigRes == "na": # fit narrow signal
+  if sig_res == "na": # fit narrow signal
     print('===> fitting narrow signal model')
     alpha = (0.6, 0.45, 1.05)
   else: # else fit broad signal
@@ -382,10 +390,10 @@ if __name__ == "__main__":
  
   mjj_fine = fitter.getVar('mjj_fine')
   mjj_fine.setBins(len(bins_sig_fit))
-  chi2_fine = fitter.projection("model_s","data","mjj_fine","signal_fit_%s.png"%q)
-  fitter.projection("model_s","data","mjj_fine","signal_fit_%s_log.png"%q,0,True)
-  chi2 = fitter.projection("model_s","data","mjj_fine","signal_fit_%s_binned.png"%q,roobins_sig_fit)
-  fitter.projection("model_s","data","mjj_fine","signal_fit_%s_log_binned.png"%q,roobins_sig_fit,True)
+  chi2_fine = fitter.projection("model_s","data","mjj_fine", os.path.join(out_dir, "signal_fit_%s.png"%q))
+  fitter.projection("model_s","data","mjj_fine", os.path.join(out_dir, "signal_fit_%s_log.png"%q), 0, True)
+  chi2 = fitter.projection("model_s","data","mjj_fine", os.path.join(out_dir, "signal_fit_%s_binned.png"%q), roobins_sig_fit)
+  fitter.projection("model_s","data","mjj_fine", os.path.join(out_dir, "signal_fit_%s_log_binned.png"%q), roobins_sig_fit, True)
 
   # write signal histogram and model with params
  
@@ -411,7 +419,7 @@ if __name__ == "__main__":
   print
   print
   print "############# FIT BACKGROUND AND SAVE PARAMETERS ###########"
-  qcd_outfile = ROOT.TFile('qcd_fit_%s.root'%q,'RECREATE')
+  qcd_outfile = ROOT.TFile(os.path.join(out_dir, 'qcd_fit_%s.root'%q),'RECREATE')
 
   ### create background model: 2-parameter (p1 & p2) exponential (generic functional form, not based on data)
  
@@ -427,8 +435,8 @@ if __name__ == "__main__":
   ### compute chi-square of compatibility of qcd-histogram and background model for sanity check
   # plot fit result to qcd_fit_q_binned.png for each quantile q
 
-  chi2_fine = fitter_QCD.projection("model_b","data_qcd","mjj_fine","qcd_fit_%s.png"%q,0,True) # chi2 => sanity check
-  chi2_binned = fitter_QCD.projection("model_b","data_qcd","mjj_fine","qcd_fit_%s_binned.png"%q,roobins,True)
+  chi2_fine = fitter_QCD.projection("model_b","data_qcd","mjj_fine", os.path.join(out_dir, "qcd_fit_%s.png"%q), 0, True) # chi2 => sanity check
+  chi2_binned = fitter_QCD.projection("model_b","data_qcd","mjj_fine", os.path.join(out_dir, "qcd_fit_%s_binned.png"%q), roobins, True)
 
   ### write background histogram
  
@@ -469,7 +477,7 @@ if __name__ == "__main__":
 
   # plot full qcd fit results with pull factors to mjj_qcd_q.pdf for each quantile q
 
-  PlotFitResults(frame,fres.GetName(),nPars,framePulls,"data_qcd","model_b",chi2,ndof,histos_qcd[iq].GetName())
+  PlotFitResults(frame,fres.GetName(),nPars,framePulls,"data_qcd","model_b",chi2,ndof,histos_qcd[iq].GetName(), out_dir)
  
   # write qcd model with params
 
@@ -496,6 +504,7 @@ if __name__ == "__main__":
   print
   print 
   print "############# GENERATE SIGNAL+BACKGROUND DATA FROM PDFs ###########"
+
   
   f = ROOT.TFile("/tmp/%s/cache%i.root"%(commands.getoutput("whoami"),random.randint(0, 1e+6)),"RECREATE")
   f.cd()
@@ -525,7 +534,7 @@ if __name__ == "__main__":
   
   # signal+background fit (total histo) => since signal xsec = 0 per default, this is only background data & fit!
 
-  sb_outfile = ROOT.TFile('sb_fit_%s.root'%q,'RECREATE')
+  sb_outfile = ROOT.TFile(os.path.join(out_dir, 'sb_fit_%s.root'%q),'RECREATE')
   sb_outfile.cd()
   htot = ROOT.TH1F()
   htot = hdataqcd.Clone("mjj_generate_tot_%s"%q)
@@ -545,9 +554,9 @@ if __name__ == "__main__":
   print
   print "############ MAKE PER CATEGORY DATACARD AND WORKSPACE AND RUN COMBINE #############"
  
-  card=DataCardMaker(q)
+  card=DataCardMaker(q, out_dir)
  
-  card.addSignalShape('model_signal_mjj','mjj','sig_fit_%s.root'%q,{'CMS_scale_j':1.0},{'CMS_res_j':1.0})
+  card.addSignalShape('model_signal_mjj','mjj', os.path.join(out_dir, 'sig_fit_%s.root'%q), {'CMS_scale_j':1.0}, {'CMS_res_j':1.0})
   
   ### !!! compute amount of signal to be injected 
   
@@ -558,68 +567,78 @@ if __name__ == "__main__":
   else: constant=xsec*constant
 
   # add signal pdf from model_s, taking integral number of events with constant scaling factor for sig
-  card.addFixedYieldFromFile('model_signal_mjj',0,'sig_fit_%s.root'%q,histos_sig[iq].GetName(),constant=constant)
+  card.addFixedYieldFromFile('model_signal_mjj',0, os.path.join(out_dir, 'sig_fit_%s.root'%q), histos_sig[iq].GetName(), constant=constant)
   card.addSystematic("CMS_scale_j","param",[0.0,0.012])
   card.addSystematic("CMS_res_j","param",[0.0,0.08]) 
  
   # add bg pdf
-  card.addQCDShapeNoTag('model_qcd_mjj','mjj','qcd_fit_%s.root'%q,nPars)
-  card.addFloatingYield('model_qcd_mjj',1,'qcd_fit_%s.root'%q,histos_qcd[iq].GetName())
+  card.addQCDShapeNoTag('model_qcd_mjj','mjj', os.path.join(out_dir, 'qcd_fit_%s.root'%q), nPars)
+  card.addFloatingYield('model_qcd_mjj',1, os.path.join(out_dir, 'qcd_fit_%s.root'%q), histos_qcd[iq].GetName())
   for i in range(1,nPars+1): card.addSystematic("CMS_JJ_p%i"%i,"flatParam",[])
   card.addSystematic("model_qcd_mjj_JJ_%s_norm"%q,"flatParam",[]) # integral -> anzahl events -> fuer skalierung der genormten roofit histogramm
  
-  card.importBinnedData('sb_fit_%s.root'%q,'mjj_generate_tot_%s'%q,["mjj"],'data_obs',1.0)
+  card.importBinnedData(os.path.join(out_dir, 'sb_fit_%s.root'%q), 'mjj_generate_tot_%s'%q,["mjj"],'data_obs',1.0)
   card.makeCard()
   card.delete()
 
+
   # run combine on datacard -> create workspaces workspace_JJ_0.0_quantile.root
-  cmd = 'text2workspace.py datacard_JJ_{label}.txt -o workspace_JJ_{xsec}_{label}.root && ' \
+  # -M Significance: profile likelihood
+  cmd = 'cd {out_dir} && ' \
+        'text2workspace.py datacard_JJ_{label}.txt -o workspace_JJ_{xsec}_{label}.root && ' \
         'combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} -n significance_{xsec}_{label} && ' \
-        'combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} --pvalue -n pvalue_{xsec}_{label}'.format(mass=mass,xsec=xsec,label=q)
+        'combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} --pvalue -n pvalue_{xsec}_{label}'.format(out_dir=out_dir, mass=mass, xsec=xsec, label=q)
   print cmd
   os.system(cmd)
   
   #run and visualize s+b fit as sanity check (sb_fit_mjj_qcd_q.root.pdf)
-  checkSBFit('workspace_JJ_{xsec}_{label}.root'.format(xsec=xsec,label=q),q,roobins,histos_qcd[iq].GetName()+".root")
+  checkSBFit('{out_dir}/workspace_JJ_{xsec}_{label}.root'.format(out_dir=out_dir, xsec=xsec,label=q),q,roobins,histos_qcd[iq].GetName()+".root", out_dir)
 
  print
  print
  print "############ MAKE N-CATEGORY DATACARD AND WORKSPACE AND RUN COMBINE #############"
  #The difference here is that the background shape comes from one specific quantile (rather than from its own as above)
+
+ # import ipdb; ipdb.set_trace()
+ 
+ cmdCombine = 'cd {out_dir} && combineCards.py '.format(out_dir=out_dir)
+
  for iq,q in enumerate(quantiles):  
  
   if q == 'total': continue
  
-  card=DataCardMaker(q+"_4combo")
+  card=DataCardMaker(q+"_4combo", out_dir)
  
   print "********************** Add signal shape to datacard **********************"
-  card.addSignalShape('model_signal_mjj','mjj','sig_fit_%s.root'%q,{'CMS_scale_j':1.0},{'CMS_res_j':1.0})
+  card.addSignalShape('model_signal_mjj','mjj', os.path.join(out_dir, 'sig_fit_%s.root'%q), {'CMS_scale_j':1.0},{'CMS_res_j':1.0})
   # TODO: check data!
   constant = sig_xsec*lumi/sig_gen_events
   if xsec==0: constant = 1.0*constant
   else: constant=xsec*constant
-  card.addFixedYieldFromFile('model_signal_mjj',0,'sig_fit_%s.root'%q,histos_sig[iq].GetName(),constant=constant)
+  card.addFixedYieldFromFile('model_signal_mjj',0, os.path.join(out_dir, 'sig_fit_%s.root'%q), histos_sig[iq].GetName(), constant=constant)
   card.addSystematic("CMS_scale_j","param",[0.0,0.012])
   card.addSystematic("CMS_res_j","param",[0.0,0.08]) 
  
   #TAKE BACKGROUND SHAPE COMES FROM BACKGROUND-ENRICHED QUANTILE SLICE --> WHICH ONE? TRY THE Q100 SLICE!
-  card.addQCDShapeNoTag('model_qcd_mjj','mjj','qcd_fit_q100.root',nPars) 
-  card.addFloatingYield('model_qcd_mjj',1,'qcd_fit_%s.root'%q,histos_qcd[iq].GetName())
+  card.addQCDShapeNoTag('model_qcd_mjj','mjj', os.path.join(out_dir, 'qcd_fit_q100.root'), nPars) 
+  card.addFloatingYield('model_qcd_mjj',1, os.path.join(out_dir, 'qcd_fit_%s.root'%q), histos_qcd[iq].GetName())
   for i in range(1,nPars+1): card.addSystematic("CMS_JJ_p%i"%i,"flatParam",[])
   card.addSystematic("model_qcd_mjj_JJ_q100_4combo_norm","flatParam",[])
  
-  card.importBinnedData('sb_fit_%s.root'%q,'mjj_generate_tot_%s'%q,["mjj"],'data_obs',1.0)
+  card.importBinnedData(os.path.join(out_dir, 'sb_fit_%s.root'%q), 'mjj_generate_tot_%s'%q,["mjj"],'data_obs',1.0)
   card.makeCard()
   card.delete()
   
-  cmdCombine+="quantile_{quantile}=datacard_JJ_{label}.txt ".format(quantile=q,label=q+"_4combo",xsec=xsec)
+  cmdCombine += "quantile_{quantile}=datacard_JJ_{label}.txt ".format(quantile=q,label=q+"_4combo",xsec=xsec)
  
  #MAKE FINAL DATACARD (needs some cosmetics as below) 
- cmdCombine+= '&> datacard_{xsec}_final.txt'.format(xsec=xsec)
+ cmdCombine += '&> datacard_{xsec}_final.txt'.format(xsec=xsec)
  print cmdCombine
  os.system(cmdCombine)
- d = open('datacard_tmp.txt','w')
- dorig = open('datacard_{xsec}_final.txt'.format(xsec=xsec),'r')
+
+
+ d = open(os.path.join(out_dir, 'datacard_tmp.txt'),'w')
+ dorig = open('{out_dir}/datacard_{xsec}_final.txt'.format(out_dir=out_dir, xsec=xsec),'r')
  for l in dorig.readlines(): d.write(l)
  d.write('quantile_q100_rate     rateParam       quantile_q100  model_qcd_mjj   1\n')
  d.write('quantile_q90_rate      rateParam       quantile_q90  model_qcd_mjj   (0.20*@0)/0.10  quantile_q100_rate\n')
@@ -630,7 +649,12 @@ if __name__ == "__main__":
  # d.write('quantile_q5_rate      rateParam       quantile_q5  model_qcd_mjj   (0.04*@0)/0.10  quantile_q100_rate\n')
  d.write('quantile_q01_rate      rateParam       quantile_q01  model_qcd_mjj   (0.01*@0)/0.10  quantile_q100_rate\n')
  d.close()
- cmd = 'mv datacard_tmp.txt datacard_{xsec}_final.txt && text2workspace.py datacard_{xsec}_final.txt -o workspace_{xsec}_final.root && combine -M Significance workspace_{xsec}_final.root -m {mass} -n significance_{xsec} && combine -M Significance workspace_{xsec}_final.root -m {mass} --pvalue -n pvalue_{xsec}'.format(mass=mass,xsec=xsec)
+
+ cmd = 'cd {out_dir} && ' \
+        'mv datacard_tmp.txt datacard_{xsec}_final.txt && ' \
+        'text2workspace.py datacard_{xsec}_final.txt -o workspace_{xsec}_final.root && ' \
+        'combine -M Significance workspace_{xsec}_final.root -m {mass} -n significance_{xsec} && '\
+        'combine -M Significance workspace_{xsec}_final.root -m {mass} --pvalue -n pvalue_{xsec}'.format(out_dir=out_dir, mass=mass,xsec=xsec)
  print cmd
  os.system(cmd)
  

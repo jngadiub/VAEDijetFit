@@ -33,3 +33,7 @@ def truncate(binning,mmin,mmax):
         if b >= mmin and b <= mmax:
             res.append(b)
     return res
+
+def make_run_str(signal_name, signal_xsec=10, run_n=0):
+    return '_' + signal_name[:-3] + '_xsec' + str(signal_xsec) + '_run' + str(run_n) 
+   
