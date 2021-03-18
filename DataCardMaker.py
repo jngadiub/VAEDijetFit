@@ -27,7 +27,7 @@ class DataCardMaker:
     def makeCard(self):
 
         f = open(os.path.join(self.outDir,"datacard_"+self.tag+'.txt'),'w')
-        datacard_inputs_file = os.path.join(self.outDir, "datacardInputs_"+self.tag)
+        datacard_inputs_file = "datacardInputs_"+self.tag
         f.write('imax 1\n')
         f.write('jmax {n}\n'.format(n=len(self.contributions)-1))
         f.write('kmax *\n')
@@ -152,6 +152,7 @@ class DataCardMaker:
         events=histogram.Integral()*self.luminosity*constant # !!!
         self.contributions.append({'name':name,'pdf':pdfName,'ID':ID,'yield':events})
 
+    # add a floatable number of events value
     def addFloatingYield(self,name,ID,filename,histoName,mini=0,maxi=1e+9,constant=False):
         pdfName="_".join([name,self.tag])
         pdfNorm="_".join([name,self.tag,"norm"])
@@ -163,7 +164,7 @@ class DataCardMaker:
             self.w.var(pdfNorm).setConstant(1)
         self.contributions.append({'name':name,'pdf':pdfName,'ID':ID,'yield':1.0})
                 
-    def addSignalShape(self,name,variable,jsonFile,scale ={},resolution={}):
+    def addSignalShape(self, name, variable, jsonFile, scale ={}, resolution={}):
     
         pdfName="_".join([name,self.tag])
         
