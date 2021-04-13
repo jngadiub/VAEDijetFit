@@ -8,42 +8,6 @@ import CMS_lumi, tdrstyle
 
 from Utils import *
 
-def get_xsec_scan(filename):
-
-    with open('files_count.json') as f:
-        data = json.load(f)
-
-    for k in data.keys():
-        if k in filename or k.replace('_EXT','') in filename: return data[k][2]
-   
-def get_canvas(cname):
-
-   tdrstyle.setTDRStyle()
-
-   H_ref = 630 
-   W_ref = 600 
-   W = W_ref
-   H  = H_ref
-
-   T = 0.08*H_ref
-   B = 0.12*H_ref 
-   L = 0.12*W_ref
-   R = 0.04*W_ref
-
-   canvas = ROOT.TCanvas(cname,cname,50,50,W,H)
-   canvas.SetFillColor(0)
-   canvas.SetBorderMode(0)
-   canvas.SetFrameFillStyle(0)
-   canvas.SetFrameBorderMode(0)
-   canvas.SetLeftMargin( L/W+0.01 )
-   canvas.SetRightMargin( R/W+0.03 )
-   canvas.SetTopMargin( 0.07 ) #/T/H
-   canvas.SetBottomMargin( B/H )
-   #canvas.SetGrid()
-   canvas.SetLogy()
-   
-   return canvas
-
 
 def plotPValue(xsec_scan, quantiles, plot_name_suffix='', out_dir=''):
 
@@ -169,7 +133,7 @@ if __name__ == "__main__":
     xsec = np.array(get_xsec_scan(options.sigFile))
 
     # distinctive run string
-    run_str = make_run_str(signal_name=options.sigFile, signal_xsec=options.sigXsec, run_n=options.run_n)
+    run_str = make_run_str(sig_name=options.sigFile, sig_xsec=options.sigXsec, run_n=options.run_n)
     out_dir = run_str[1:]
 
     if len(xsec) == 0:

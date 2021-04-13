@@ -234,7 +234,9 @@ def checkSBFit(filename,quantile,roobins,plotname, out_dir):
 
 
 def prepare_output_directory(out_dir, clean_up=True):
-    pathlib2.Path(out_dir).mkdir(parents=True, exist_ok=True)
+    if not os.path.exists(out_dir):
+        pathlib2.Path(out_dir).mkdir(parents=True, exist_ok=True)
+        return
     if clean_up:
         os.system('rm '+out_dir+'/{*.root,*.txt,*.C}') 
 
