@@ -1,0 +1,10 @@
+*.pyc
+*.png
+*.root
+*.txt
+*.pdf
+*.C
+*.c
+*results/
+*.sh
+
