@@ -35,8 +35,8 @@ sample_dirs = {
                 }
 
 
-def get_results_file(run_n, sig_id, sig_xsec, q):
-    sig_dir = make_dir_str(sample_dirs[sig_id], sig_xsec, run_n)
+def get_results_file(run_n, sig_id, sig_xsec, q, loss_id):
+    sig_dir = make_dir_str(sample_dirs[sig_id], sig_xsec, run_n, loss_id)
     return os.path.join(sig_dir,'results_%s.txt'%q)
 
 
@@ -57,7 +57,7 @@ def make_significance_lines(xmin, xmax):
     return lines, bans
 
 
-def plot_pvalue(run_n, sig_ids, sig_xsec, xsec_scan, quantiles, plot_name_suffix='', out_dir=''):
+def plot_pvalue(run_n, sig_ids, sig_xsec, xsec_scan, quantiles, loss_id='', plot_name_suffix='', out_dir=''):
 
     xmin = xsec_scan[0]*1000.
     xmax = (xsec_scan[-1]+xsec_scan[-1]*0.1)*1000.
@@ -93,7 +93,7 @@ def plot_pvalue(run_n, sig_ids, sig_xsec, xsec_scan, quantiles, plot_name_suffix
             ys = array('d', [])
             yp = array('d',[])
 
-            fin = open(get_results_file(run_n, sig_id, sig_xsec, q), 'r')
+            fin = open(get_results_file(run_n, sig_id, sig_xsec, q, loss_id), 'r')
             for l in fin.readlines():
                 l = l.split('\t')
                 yp.append(float(l[1]))
@@ -145,7 +145,7 @@ def plot_pvalue(run_n, sig_ids, sig_xsec, xsec_scan, quantiles, plot_name_suffix
     canv.cd()
     canv.Update()
  
-    canv.SaveAs(os.path.join(out_dir, "pvalue"+plot_name_suffix+".png"))
+    canv.SaveAs(os.path.join(out_dir, "pvalue"+plot_name_suffix+'_loss_'+loss_id+".png"))
 
 
 if __name__ == "__main__":
