@@ -65,7 +65,7 @@ def compute_pval_from_zscore(zscores):
     return 1 - stats.norm.cdf(zscores)
 
 
-def plot_pvalue_matplotlib(run_n, resonance, sig_ids, sig_xsec, xsec_scan, quantiles, plot_name_suffix, fig_dir):
+def plot_pvalue_matplotlib(run_n, resonance, sig_ids, sig_xsec, xsec_scan, quantiles, loss_id, plot_name_suffix, fig_dir):
     
     # Load CMS style sheet
     plt.style.use(hep.style.CMS)
@@ -129,7 +129,7 @@ def plot_pvalue_matplotlib(run_n, resonance, sig_ids, sig_xsec, xsec_scan, quant
     plt.gca().add_artist(legend2)
 
     print('writing ROC plot to {}'.format(fig_dir))
-    fig.savefig(os.path.join(fig_dir, "pvalue"+plot_name_suffix + '_mpl.png'), bbox_inches='tight')
+    fig.savefig(os.path.join(fig_dir, "pvalue"+ plot_name_suffix + '_loss_'+loss_id + '_mpl.png'), bbox_inches='tight')
     plt.close(fig)
 
 
@@ -143,4 +143,4 @@ if __name__ == "__main__":
     sig_xsec = 100.
     xsec_scan = np.array([0.0,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1])
 
-    plot_pvalue_matplotlib(run_n, resonance, sig_ids, sig_xsec, xsec_scan, quantiles, plot_name_suffix='_all_resonances_'+resonance, fig_dir='')
+    plot_pvalue_matplotlib(run_n, resonance, sig_ids, sig_xsec, xsec_scan, quantiles, loss_id='rk5_05', plot_name_suffix='_all_resonances_'+resonance, fig_dir='')

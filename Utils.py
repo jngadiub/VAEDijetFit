@@ -37,12 +37,12 @@ def truncate(binning,mmin,mmax):
             res.append(b)
     return res
 
-def make_run_str(sig_name, sig_xsec=10, run_n=0):
-    return '_' + sig_name[:-3] + '_xsec' + str(sig_xsec) + '_run' + str(run_n) 
+def make_run_str(sig_name, sig_xsec=10, run_n=0, loss_id='rk5'):
+    return '_' + sig_name[:-3] + '_xsec' + str(sig_xsec) + '_run' + str(run_n) + '_loss_' + loss_id 
 
 
-def make_dir_str(sig_name, sig_xsec=10, run_n=0):
-    return sig_name + '_xsec' + str(sig_xsec) + '_run' + str(run_n) 
+def make_dir_str(sig_name, sig_xsec=10, run_n=0, loss_id='rk5'):
+    return sig_name + '_xsec' + str(sig_xsec) + '_run' + str(run_n) + '_loss_' + loss_id 
 
 
 def get_canvas(cname):
