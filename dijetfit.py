@@ -4,6 +4,8 @@ import numpy as np
 import time, sys, os, optparse, json
 import pathlib2
 
+from Utils import f_test, calculateChi2, PlotFitResults, checkSBFit
+
 import ROOT
 ROOT.gStyle.SetOptStat(0)
 ROOT.gStyle.SetOptTitle(0)
@@ -34,191 +36,39 @@ def get_generated_events(filename):
 
    print ( " in get_generated_events N = ",N) 
    return N 
-
-
-
-
-def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_name,chi2,ndof,canvname, out_dir):
-
- c1 =ROOT.TCanvas("c1","",800,800)
- c1.SetLogy()
- c1.Divide(1,2,0,0,0)
- c1.SetLogy()
- c1.cd(1)
- p11_1 = c1.GetPad(1)
- p11_1.SetPad(0.01,0.26,0.99,0.98)
- p11_1.SetLogy()
- p11_1.SetRightMargin(0.05)
-
- p11_1.SetTopMargin(0.1)
- p11_1.SetBottomMargin(0.02)
- p11_1.SetFillColor(0)
- p11_1.SetBorderMode(0)
- p11_1.SetFrameFillStyle(0)
- p11_1.SetFrameBorderMode(0)
- frame.GetYaxis().SetTitleSize(0.06)
- frame.GetYaxis().SetTitleOffset(0.98)
- frame.SetMinimum(0.2)
- frame.SetMaximum(1E7)
- frame.SetName("mjjFit")
- frame.GetYaxis().SetTitle("Events / 100 GeV")
- frame.SetTitle("")
- frame.Draw()
-    
- legend = ROOT.TLegend(0.45097293,0.64183362,0.6681766,0.879833)
- legend2 = ROOT.TLegend(0.45097293,0.64183362,0.6681766,0.879833)
- legend.SetTextSize(0.046)
- legend.SetLineColor(0)
- legend.SetShadowColor(0)
- legend.SetLineStyle(1)
- legend.SetLineWidth(1)
- legend.SetFillColor(0)
- legend.SetFillStyle(0)
- legend.SetMargin(0.35)
- legend2.SetTextSize(0.038)
- legend2.SetLineColor(0)
- legend2.SetShadowColor(0)
- legend2.SetLineStyle(1)
- legend2.SetLineWidth(1)
- legend2.SetFillColor(0)
- legend2.SetFillStyle(0)
- legend2.SetMargin(0.35)
- legend.AddEntry(frame.findObject(data_name),"Data","lpe")
- legend.AddEntry(frame.findObject(pdf_name),"%i par. background fit"%nPars,"l")
- legend2.AddEntry("","","")
- legend2.AddEntry("","","")
- legend2.AddEntry("","","")
- legend2.AddEntry("","","")
- legend2.AddEntry(frame.findObject(fitErrs),"","f")
- legend2.AddEntry("","","")
-
- legend2.Draw("same")
- legend.Draw("same")
-
- pt = ROOT.TPaveText(0.18,0.06,0.54,0.17,"NDC")
- pt.SetTextFont(42)
- pt.SetTextAlign(12)
- pt.SetFillColor(0)
- pt.SetBorderSize(0)
- pt.SetFillStyle(0)
- pt.AddText("Chi2/ndf = %.2f/%i = %.2f"%(chi2,ndof,chi2/ndof))
- pt.AddText("Prob = %.3f"%ROOT.TMath.Prob(chi2,ndof))
- pt.Draw()
- 
- c1.Update()
-
- c1.cd(2)
- p11_2 = c1.GetPad(2)
- p11_2.SetPad(0.01,0.02,0.99,0.27)
- p11_2.SetBottomMargin(0.35)
- p11_2.SetRightMargin(0.05)
- p11_2.SetGridx(0)
- p11_2.SetGridy(0)
- pulls.SetMinimum(-10)
- pulls.SetMaximum(10)
- pulls.SetTitle("")
- pulls.SetXTitle("Dijet invariant mass (GeV)")
- pulls.GetXaxis().SetTitleSize(0.06)
- pulls.SetYTitle("#frac{Data-Fit}{#sigma_{data}}")
- pulls.GetYaxis().SetTitleSize(0.15)
- pulls.GetYaxis().CenterTitle()
- pulls.GetYaxis().SetTitleOffset(0.30)
- pulls.GetYaxis().SetLabelSize(0.15)
- pulls.GetXaxis().SetTitleSize(0.17)
- pulls.GetXaxis().SetTitleOffset(0.91)
- pulls.GetXaxis().SetLabelSize(0.12)
- pulls.GetXaxis().SetNdivisions(906)
- pulls.GetYaxis().SetNdivisions(305)
- pulls.Draw("same")
- line = ROOT.TLine(1126,0,frame.GetXaxis().GetXmax(),0)
- line1  = ROOT.TLine(1126,1,frame.GetXaxis().GetXmax(),1)
- line2  = ROOT.TLine(1126,-1,frame.GetXaxis().GetXmax(),-1)
- line1.SetLineStyle(2)
- line1.SetLineWidth(2)
- line2.SetLineStyle(2)
- line2.SetLineWidth(2)
- line.Draw("same")
- line1.Draw("same")
- line2.Draw("same")    
- c1.Update()
-
- canvname = os.path.join(out_dir, canvname+'.pdf')
- c1.SaveAs(canvname)
- c1.SaveAs(canvname.replace("pdf","C"),"C")
-
-def calculateChi2(g_pulls, nPars, ranges = None, excludeZeros = True, dataHist = None):
-   # taken from Oz code https://github.com/case-team/CASEUtils/blob/a6fd907bce7e00306b77f6022fc1d2e571698347/fitting/Utils.py#L222
-   NumberOfVarBins = 0
-   NumberOfObservations_VarBin = 0
-   chi2_VarBin = 0.
-    
-
-   a_x = array('d', [0.])
-   a_val = array('d', [0.])
-   a_data = array('d', [0.])
-   already_zero = False
-   for p in range (0,g_pulls.GetN()):
-   
-      g_pulls.GetPoint(p, a_x, a_val)
-      x = a_x[0]
-      pull = a_val[0]
-
-      #print x,pull
-
-      add = True
-      if(ranges is not None and len(ranges) > 0):
-         add = False
-         for range_ in ranges:
-            if(x >= range_[0] and x<= range_[1]):
-               add = True
-       
-      if(excludeZeros and dataHist is not None):
-         dataHist.GetPoint(p, a_x, a_data)
-         if(a_data[0] <= 0.):
-            #print("Data %.0f for x = %.0f" % (a_data[0], a_x[0]))
-            #include 'first' zero point, exclude rest
-            if(already_zero): add = False
-            else: already_zero = True
-
-      if(add):
-         NumberOfObservations_VarBin+=1
-         chi2_VarBin += pow(pull,2)
-           
-   ndf_VarBin = NumberOfObservations_VarBin - nPars
-   return chi2_VarBin,ndf_VarBin
  
 def makeData(options, dataFile, q, iq, quantiles, hdata, minMJJ=0, maxMJJ=1e+04):
  
- file = h5py.File(options.inputDir+"/"+dataFile,'r')
- sel_key_q = 'sel_q90' if q == 'q100' else 'sel_' + q # selection column for quantile q (use rejected events of q90 for q100)
- print "Current quantile file: %s, reading quantile %s" % (file, sel_key_q)
+   file = h5py.File(options.inputDir+"/"+dataFile,'r')
+   sel_key_q = 'sel_q90' if q == 'q100' else 'sel_' + q # selection column for quantile q (use rejected events of q90 for q100)
+   print "Current quantile file: %s, reading quantile %s" % (file, sel_key_q)
 
- data = file['eventFeatures'][()] 
- mjj_idx = np.where(file['eventFeatureNames'][()] == 'mJJ')[0][0]
+   data = file['eventFeatures'][()] 
+   mjj_idx = np.where(file['eventFeatureNames'][()] == 'mJJ')[0][0]
 
- # if quantile = total, fill histogram with all data and return
- if q=='total':  
-  for e in range(data.shape[0]): hdata.Fill(data[e][mjj_idx])
-  return 
+   # if quantile = total, fill histogram with all data and return
+   if q=='total':
+    for e in range(data.shape[0]): hdata.Fill(data[e][mjj_idx])
+    return
 
- # else, if quantile = real quantile, fill with orthogonal data
- sel_idx = np.where(file['eventFeatureNames'][()] == sel_key_q)[0][0] # 0=rejected 1=accepted
+   # else, if quantile = real quantile, fill with orthogonal data
+   sel_idx = np.where(file['eventFeatureNames'][()] == sel_key_q)[0][0] # 0=rejected 1=accepted
  
- if q=='q01':
-  for e in range(data.shape[0]):
-   #if data[e][mjj_idx] < minMJJ or data[e][mjj_idx] > maxMJJ: continue
-   if data[e][sel_idx]==1: hdata.Fill(data[e][mjj_idx])
- elif q=='q100': #if 90% quantile is rejected then events are in the 100-90% slice
-  for e in range(data.shape[0]): 
-   #if data[e][mjj_idx] < minMJJ or data[e][mjj_idx] > maxMJJ: continue
-   if data[e][sel_idx]==0: hdata.Fill(data[e][mjj_idx]) 
- else:   
-  print ".... checking orthogonality wrt",quantiles[iq-1],"quantile...."
-  sel_key_iq = 'sel_' + quantiles[iq-1] # selection column for quantile q
-  sel_idx_iq = np.where(file['eventFeatureNames'][()] == sel_key_iq)[0] # 0=rejected 1=accepted
-  for e in range(data.shape[0]): 
-   #if data[e][mjj_idx] < minMJJ or data[e][mjj_idx] > maxMJJ: continue
-   if data[e][sel_idx_iq]==0 and data[e][sel_idx]==1: hdata.Fill(data[e][mjj_idx])
+   if q=='q01':
+    for e in range(data.shape[0]):
+     #if data[e][mjj_idx] < minMJJ or data[e][mjj_idx] > maxMJJ: continue
+     if data[e][sel_idx]==1: hdata.Fill(data[e][mjj_idx])
+   elif q=='q100': #if 90% quantile is rejected then events are in the 100-90% slice
+    for e in range(data.shape[0]):
+     #if data[e][mjj_idx] < minMJJ or data[e][mjj_idx] > maxMJJ: continue
+     if data[e][sel_idx]==0: hdata.Fill(data[e][mjj_idx]) 
+   else: 
+    print ".... checking orthogonality wrt",quantiles[iq-1],"quantile...."
+    sel_key_iq = 'sel_' + quantiles[iq-1] # selection column for quantile q
+    sel_idx_iq = np.where(file['eventFeatureNames'][()] == sel_key_iq)[0] # 0=rejected 1=accepted
+    for e in range(data.shape[0]):
+     #if data[e][mjj_idx] < minMJJ or data[e][mjj_idx] > maxMJJ: continue
+     if data[e][sel_idx_iq]==0 and data[e][sel_idx]==1: hdata.Fill(data[e][mjj_idx])
 
 def checkSBFit(filename,quantile,roobins,plotname, out_dir):
  
