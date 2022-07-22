@@ -134,6 +134,9 @@ if __name__ == "__main__":
    parser.add_option("-l","--load_data",dest="load_data",action="store_true",help="Load orthogonal data")
    parser.add_option("--res", "--res", dest="sig_res", type="choice", choices=("na", "br"), default="na", help="resonance type: narrow [na] or broad [br]")
    parser.add_option("--out", '--out', dest="out_dir", type=str, default="./", help='output directory to store all results (plots, datacards, root files, etc.)')
+   parser.add_option("-b", "--blinded", dest="blinded", action="store_true",
+                      default=False,
+                      help="Blinding the signal region for the fit.")
    (options,args) = parser.parse_args()
     
    xsec = options.xsec
@@ -248,6 +251,14 @@ if __name__ == "__main__":
       - fit background shape -> exponential lambda ??
       - chi2 ??
    ''' 
+   nParsToTry = [2, 3, 4]
+   best_i = [0]*len(quantiles)
+   nPars_QCD = [0]*len(quantiles)
+   qcd_fname = [0]*len(quantiles)
+   chi2s = [[0]*len(nParsToTry)]*len(quantiles)
+   ndofs = [[0]*len(nParsToTry)]*len(quantiles)
+   probs = [[0]*len(nParsToTry)]*len(quantiles)
+   qcd_fnames = [[""]*len(nParsToTry)]*len(quantiles)
 
    for iq,q in enumerate(quantiles):
       
@@ -309,88 +320,147 @@ if __name__ == "__main__":
       print
       print
       print "############# FIT BACKGROUND AND SAVE PARAMETERS for quantile "+q+"   ###########"
-      qcd_outfile = ROOT.TFile(os.path.join(out_dir, 'qcd_fit_%s.root'%q),'RECREATE')
 
-      ### create background model: 2-parameter (p1 & p2) exponential (generic functional form, not based on data)
+      sb1_edge = 2232
+      sb2_edge = 2776
 
-      fitter_QCD=Fitter(['mjj_fine'])
-      fitter_QCD.qcdShape('model_b','mjj_fine',nPars)
-      
-      ### fit background model to actual qcd histogram data (all cuts applied)
+      regions = [("SB1", binsx[0], sb1_edge),
+                 ("SB2", sb2_edge, binsx[-1]),
+                 ("SR", sb1_edge, sb2_edge),
+                 ("FULL", binsx[0], binsx[-1])]
 
-      fitter_QCD.importBinnedData(histos_qcd[iq],['mjj_fine'],'data_qcd')
-      fres = fitter_QCD.fit('model_b','data_qcd',[ROOT.RooFit.Save(1)])
-      fres.Print()
+      blind_range = ROOT.RooFit.Range("SB1,SB2")
+      full_range = ROOT.RooFit.Range("FULL")
+      fit_ranges = [(binsx[0], sb1_edge), (sb2_edge, binsx[-1])]
 
-      ### compute chi-square of compatibility of qcd-histogram and background model for sanity check
-      # plot fit result to qcd_fit_q_binned.png for each quantile q
+      histos_sb_blind = []
+      h = apply_blinding(histos_qcd[iq], ranges=fit_ranges)
+      histos_sb_blind.append(h )
+      num_blind = histos_sb_blind[-1].Integral()
 
-      chi2_fine = fitter_QCD.projection("model_b","data_qcd","mjj_fine", os.path.join(out_dir, "qcd_fit_%s.png"%q), 0, True) # chi2 => sanity check
-      chi2_binned = fitter_QCD.projection("model_b","data_qcd","mjj_fine", os.path.join(out_dir, "qcd_fit_%s_binned.png"%q), roobins, True)
+      if options.blinded:
+         fitting_histogram = histos_sb_blind[-1]
+         data_name = "data_qcd_blind"
+         fit_range = blind_range
+         chi2_range = fit_ranges
+         norm = ROOT.RooFit.Normalization(num_blind, ROOT.RooAbsReal.NumEvent)
 
-      ### write background histogram
+      else:
+         fitting_histogram = histos_qcd[iq]
+         data_name = "data_qcd"
+         fit_range = full_range
+         chi2_range = None
+         norm = ROOT.RooFit.Normalization(histos_qcd[iq].Integral(),
+                                        ROOT.RooAbsReal.NumEvent)
 
-      qcd_outfile.cd()
-      histos_qcd[iq].Write() # ??? => write histo into qcd_outfile
+      for i, nPars in enumerate(nParsToTry):
+         print("Trying %i parameter background fit" % nPars)
+         qcd_fnames[i] = str(nPars) + 'par_qcd_fit%i_quantile%s.root' % (i,q)
+         # print "          FIXMEEEEEE QCD NAMES NEED QUANTILEEEEEEE "
+         # sys.exit()
 
-      ### plot background data with fit 
+         qcd_outfile = ROOT.TFile(os.path.join(out_dir, qcd_fnames[i]),'RECREATE')
 
-      mjj = fitter_QCD.getVar('mjj_fine')
-      mjj.setBins(bins_fine)
-      model = fitter_QCD.getFunc('model_b')
-      dataset = fitter_QCD.getData('data_qcd')
+         ### create background model: 2-parameter (p1 & p2) exponential (generic functional form, not based on data)
 
-      frame = mjj.frame()
-      dataset.plotOn(frame,ROOT.RooFit.DataError(ROOT.RooAbsData.Poisson), ROOT.RooFit.Name("data_qcd"),ROOT.RooFit.Invisible(),ROOT.RooFit.Binning(roobins))
-      model.plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kRed-7),ROOT.RooFit.LineColor(ROOT.kRed-7),ROOT.RooFit.Name(fres.GetName()),ROOT.RooFit.Binning(roobins))
-      model.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed+1),ROOT.RooFit.Name("model_b"),ROOT.RooFit.Binning(roobins))
+         fitter_QCD=Fitter(['mjj_fine'])
+         fitter_QCD.qcdShape('model_b','mjj_fine',nPars)
 
-      framePulls = mjj.frame()
-      hpull = frame.pullHist("data_qcd","model_b",True) # ??? pull => second canvas in pull
-      #hpull2 = ROOT.TH1F("hpull2","hpull2",len(binsx)-1, binsx[0], binsx[-1])
-      #for p in range(hpull.GetN()):
-      # x = ROOT.Double(0.)
-      # y = ROOT.Double(0.)
-      # hpull.GetPoint(p,x,y)
-      # #print p,x,y
-      # bin = hpull2.GetXaxis().FindBin(x)
-      # hpull2.SetBinContent(p+1,y)
+         ### fit background model to actual qcd histogram data (all cuts applied)
 
-      framePulls.addPlotable(hpull,"X0 P E1")
-      chi2 = frame.chiSquare()
-      ndof = 1
-      print "chi2 frame:",frame.chiSquare()
+         fitter_QCD.importBinnedData(histos_qcd[iq],['mjj_fine'],'data_qcd')
+         fres = fitter_QCD.fit('model_b','data_qcd',[ROOT.RooFit.Save(1)])
+         fres.Print()
 
-      dataset.plotOn(frame,ROOT.RooFit.DataError(ROOT.RooAbsData.Poisson),ROOT.RooFit.Name("data_qcd"),ROOT.RooFit.XErrorSize(0),ROOT.RooFit.Binning(roobins))
-      #my_chi2,my_ndof = calculateChi2(histos_qcd[index],nPars[index],hpull2)
-      #print "my chi2:",chi2/ndof
+         ### compute chi-square of compatibility of qcd-histogram and background model for sanity check
+         # plot fit result to qcd_fit_q_binned.png for each quantile q
 
-      # plot full qcd fit results with pull factors to mjj_qcd_q.pdf for each quantile q
+         chi2_fine = fitter_QCD.projection("model_b","data_qcd","mjj_fine", os.path.join(out_dir, qcd_fnames[i].replace(".root",".png")), 0, True) # chi2 => sanity check
+         chi2_binned = fitter_QCD.projection("model_b","data_qcd","mjj_fine", os.path.join(out_dir, qcd_fnames[i].replace(".root","_binned.png")), roobins, True)
 
-      PlotFitResults(frame,fres.GetName(),nPars,framePulls,"data_qcd","model_b",chi2,ndof,histos_qcd[iq].GetName(), out_dir)
+         ### write background histogram
 
-      # write qcd model with params
+         qcd_outfile.cd()
+         histos_qcd[iq].Write() # ??? => write histo into qcd_outfile
 
-      graphs = {}
-      for p in range(nPars): graphs['p%i'%(p+1)] = ROOT.TGraphErrors()
-      for var,graph in graphs.iteritems():
-         print var
-         value,error=fitter_QCD.fetch(var)
-         graph.SetPoint(0,mass,value)
-         graph.SetPointError(0,0.0,error)
+         ### plot background data with fit
 
-      qcd_outfile.cd()          
-      for name,graph in graphs.iteritems(): graph.Write(name) # ??? => saving params of bg fit -> load later for datacard
+         mjj = fitter_QCD.getVar('mjj_fine')
+         mjj.setBins(bins_fine)
+         model = fitter_QCD.getFunc('model_b')
+         dataset = fitter_QCD.getData('data_qcd')
 
-      qcd_outfile.Close()
+         frame = mjj.frame()
+         dataset.plotOn(frame,ROOT.RooFit.DataError(ROOT.RooAbsData.Poisson), ROOT.RooFit.Name("data_qcd"),ROOT.RooFit.Invisible(),ROOT.RooFit.Binning(roobins))
+         model.plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kRed-7),ROOT.RooFit.LineColor(ROOT.kRed-7),ROOT.RooFit.Name(fres.GetName()),ROOT.RooFit.Binning(roobins))
+         model.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed+1),ROOT.RooFit.Name("model_b"),ROOT.RooFit.Binning(roobins))
 
-      print "#############################"
-      print " for quantile ",q
-      print "bkg fit chi2 (fine binning)",chi2_fine
-      print "bkg fit chi2 (large binning)",chi2_binned
-      print "bkg fit chi2",chi2
-      print "#############################"
+         framePulls = mjj.frame()
+         hpull = frame.pullHist("data_qcd","model_b",True) # ??? pull => second canvas in pull
+         #hpull2 = ROOT.TH1F("hpull2","hpull2",len(binsx)-1, binsx[0], binsx[-1])
+         #for p in range(hpull.GetN()):
+         # x = ROOT.Double(0.)
+         # y = ROOT.Double(0.)
+         # hpull.GetPoint(p,x,y)
+         # #print p,x,y
+         # bin = hpull2.GetXaxis().FindBin(x)
+         # hpull2.SetBinContent(p+1,y)
 
+         framePulls.addPlotable(hpull,"X0 P E1")
+         chi2 = frame.chiSquare()
+         ndof = 1
+         print "chi2 frame:",frame.chiSquare()
+
+         dataset.plotOn(frame,ROOT.RooFit.DataError(ROOT.RooAbsData.Poisson),ROOT.RooFit.Name("data_qcd"),ROOT.RooFit.XErrorSize(0),ROOT.RooFit.Binning(roobins))
+         dhist = ROOT.RooHist(frame.findObject(data_name, ROOT.RooHist.Class()))
+         my_chi2, my_ndof = calculateChi2(hpull, nPars, ranges=chi2_range, excludeZeros = True, dataHist = dhist)
+         my_prob = ROOT.TMath.Prob(my_chi2, my_ndof)
+
+         # plot full qcd fit results with pull factors to mjj_qcd_q.pdf for each quantile q
+
+         PlotFitResults(frame,fres.GetName(),nPars,framePulls,"data_qcd",
+                        "model_b",my_chi2, my_ndof,
+                        histos_qcd[iq].GetName()+"{}".format(
+                           "_blinded" if options.blinded else ""), out_dir)
+
+         # write qcd model with params
+
+         graphs = {}
+         for p in range(nPars): graphs['p%i'%(p+1)] = ROOT.TGraphErrors()
+         for var,graph in graphs.iteritems():
+            print var
+            value,error=fitter_QCD.fetch(var)
+            graph.SetPoint(0,mass,value)
+            graph.SetPointError(0,0.0,error)
+
+         qcd_outfile.cd()       
+         for name,graph in graphs.iteritems(): graph.Write(name) # ??? => saving params of bg fit -> load later for datacard
+
+         qcd_outfile.Close()
+
+         print "#############################"
+         print " for quantile ",q
+         print "bkg fit chi2 (fine binning)",chi2_fine
+         print "bkg fit chi2 (large binning)",chi2_binned
+         print "bkg fit chi2",chi2
+         print "#############################"
+
+         print("bkg fit chi2/nbins (fine binning) ", chi2_fine)
+         print("My chi2, ndof, prob", my_chi2, my_ndof, my_prob)
+         print("My chi/ndof, chi2/nbins", my_chi2/my_ndof,
+              my_chi2/(my_ndof + nPars))
+         print("#############################")
+
+         chi2s[iq][i] = my_chi2
+         ndofs[iq][i] = my_ndof
+         probs[iq][i] = my_prob
+         fitter_QCD.delete()
+
+      best_i[iq] = f_test(nParsToTry, ndofs[iq], chi2s[iq])
+      nPars_QCD[iq] = nParsToTry[best_i[iq]]
+      qcd_fname[iq] = qcd_fnames[best_i[iq]]
+      print ( " qcd_fname[iq] ",qcd_fname[iq])
+      print("\n Chose %i parameters based on F-test ! \n" % nPars_QCD[iq])
 
       print
       print 
@@ -401,6 +471,11 @@ if __name__ == "__main__":
       f.cd()
       w=ROOT.RooWorkspace("w","w")
 
+      fitter_QCD=Fitter(['mjj_fine'])
+      fitter_QCD.qcdShape('model_b','mjj_fine',nPars_QCD[iq])
+      fitter_QCD.importBinnedData(histos_qcd[iq],['mjj_fine'],'data_qcd')
+      fitter_QCD.fit('model_b','data_qcd',[ROOT.RooFit.Save(1)])
+
       model_b = fitter_QCD.getFunc('model_b')
       model_s = fitter.getFunc('model_s')
       
@@ -410,6 +485,8 @@ if __name__ == "__main__":
       print " ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
       print " quantile ",q
       print "Generate histos_qcd[iq].Integral() ",histos_qcd[iq].Integral(),"background events from model_b" # ??? taking qcd number events as they are => all cuts applied (!!!)
+      mjj = fitter_QCD.getVar('mjj_fine')
+      mjj.setBins(bins_fine)
       dataqcd = model_b.generateBinned(ROOT.RooArgSet(mjj),histos_qcd[iq].Integral())
       hdataqcd = dataqcd.createHistogram("mjj_fine")
       hdataqcd.SetName("mjj_generate_qcd_%s"%q)
@@ -474,8 +551,8 @@ if __name__ == "__main__":
       card.addSystematic("CMS_res_j","param",[0.0,0.08]) 
 
       # add bg pdf
-      card.addQCDShapeNoTag('model_qcd_mjj','mjj', os.path.join(out_dir, 'qcd_fit_%s.root'%q), nPars)
-      card.addFloatingYield('model_qcd_mjj',1, os.path.join(out_dir, 'qcd_fit_%s.root'%q), histos_qcd[iq].GetName())
+      card.addQCDShapeNoTag('model_qcd_mjj','mjj', os.path.join(out_dir, qcd_fname[iq]), nPars_QCD[iq])
+      card.addFloatingYield('model_qcd_mjj',1, os.path.join(out_dir, qcd_fname[iq]), histos_qcd[iq].GetName())
       for i in range(1,nPars+1): card.addSystematic("CMS_JJ_p%i"%i,"flatParam",[])
       card.addSystematic("model_qcd_mjj_JJ_%s_norm"%q,"flatParam",[]) # integral -> anzahl events -> fuer skalierung der genormten roofit histogramm
 
@@ -522,9 +599,9 @@ if __name__ == "__main__":
       card.addSystematic("CMS_res_j","param",[0.0,0.08]) 
 
       #TAKE BACKGROUND SHAPE COMES FROM BACKGROUND-ENRICHED QUANTILE SLICE --> WHICH ONE? TRY THE Q100 SLICE!
-      card.addQCDShapeNoTag('model_qcd_mjj','mjj', os.path.join(out_dir, 'qcd_fit_q100.root'), nPars) 
-      card.addFloatingYield('model_qcd_mjj',1, os.path.join(out_dir, 'qcd_fit_%s.root'%q), histos_qcd[iq].GetName())
-      for i in range(1,nPars+1): card.addSystematic("CMS_JJ_p%i"%i,"flatParam",[])
+      card.addQCDShapeNoTag('model_qcd_mjj','mjj', os.path.join(out_dir, qcd_fname[len(quantiles)-2]), nPars_QCD[len(quantiles)-2])
+      card.addFloatingYield('model_qcd_mjj',1, os.path.join(out_dir, qcd_fname[iq]), histos_qcd[iq].GetName())
+      for i in range(1,nPars_QCD[len(quantiles)-2]+1): card.addSystematic("CMS_JJ_p%i"%i,"flatParam",[])
       card.addSystematic("model_qcd_mjj_JJ_q100_4combo_norm","flatParam",[])
 
       card.importBinnedData(os.path.join(out_dir, 'sb_fit_%s.root'%q), 'mjj_generate_tot_%s'%q,["mjj"],'data_obs',1.0)
