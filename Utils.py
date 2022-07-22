@@ -264,6 +264,7 @@ def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_names,chi2,ndof,canvn
     line2.Draw("same")   
     c1.Update()
 
+    canvname+='_'+str(nPars)
     canvname+='.png'
     c1.SaveAs(plot_dir + canvname)
     c1.SaveAs(canvname.replace("png","C"),"C")
