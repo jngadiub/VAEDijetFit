@@ -12,6 +12,8 @@
  "RSGraviton_WW_NARROW_13TeV_PU40_3.5TeV":[982038,100,[0.0,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1]],
  "RSGraviton_WW_NARROW_13TeV_PU40_4.0TeV":[980061,100,[]],
  "RSGraviton_WW_NARROW_13TeV_PU40_4.5TeV":[976979,100,[0.0,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1]],
+ "WpToBpT_Wp3000_Bp400_Top170_ZbtReco":[86831,100,[0.0,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1]],
+ "sig_MCOrig_QR_Reco":[2974378,1160,[]],
  "Vjets_allhad_highpt_13TeV_PU40":[2067583,293,[]],
  "XXproduction_Xto2q_13TeV_PU40":[705335,98,[]],
  "XXproduction_Xto2q_13TeV_PU40_SIDEBAND":[705335,98,[]],
