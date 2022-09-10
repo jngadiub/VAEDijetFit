@@ -286,7 +286,7 @@ def calculateChi2(g_pulls, nPars, ranges = None, excludeZeros = True, dataHist =
         x = a_x[0]
         pull = a_val[0]
 
-        #print x,pull
+        #print x,pull,pow(pull,2)
 
         add = True
         if(ranges is not None and len(ranges) > 0):
@@ -504,7 +504,7 @@ def checkSBFit(filename,label,roobins,plotname, nPars, plot_dir):
     #chi2,ndof = calculateChi2(hpull, nPars +1)
 
     pdf_names = ["model_s"] 
-    PlotFitResults(frame,fres.GetName(),nPars+1,frame3,"data_obs", pdf_names,chi2,ndof,'sbFit_'+plotname, plot_dir, has_sig = True)
+    PlotFitResults(frame,fres.GetName(),nPars,frame3,"data_obs", pdf_names,chi2,ndof,'sbFit_'+plotname, plot_dir, has_sig = True)
 
     print "chi2,ndof are", chi2, ndof
     return chi2, ndof

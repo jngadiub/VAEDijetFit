@@ -243,6 +243,77 @@ class DataCardMaker:
         model = ROOT.RooAddPdf(pdfName, pdfName, gauss, cb, self.w.var(sigfracVar))     
         getattr(self.w,'import')(model,ROOT.RooFit.Rename(pdfName))
 
+    def addSignalShapeDCB(self, name, variable, jsonFile, scale ={}, resolution={}):
+    
+        pdfName="_".join([name,self.tag])
+        
+        #self.w.factory("MH[3000]")
+        #self.w.var("MH").setConstant(1)
+       
+        scaleStr='0'
+        resolutionStr='0'
+
+        scaleSysts=[]
+        resolutionSysts=[]
+        for syst,factor in scale.iteritems():
+            self.w.factory(syst+"[0,-0.1,0.1]")
+            scaleStr=scaleStr+"+{factor}*{syst}".format(factor=factor,syst=syst)
+            scaleSysts.append(syst)
+        for syst,factor in resolution.iteritems():
+            self.w.factory(syst+"[0,-0.5,0.5]")
+            resolutionStr=resolutionStr+"+{factor}*{syst}".format(factor=factor,syst=syst)
+            resolutionSysts.append(syst)
+       
+        self.w.factory(variable+"[0,13000]")
+        
+        f = ROOT.TFile(jsonFile,'READ')
+        G_mean = f.Get('mean')
+        G_sigma = f.Get('sigma')
+        G_alpha1 = f.Get('alpha1')
+        G_alpha2 = f.Get('alpha2')
+        G_n1 = f.Get('n1')
+        G_n2 = f.Get('n2')
+        
+        x = ROOT.Double(0.)
+        mean = ROOT.Double(0.)
+        G_mean.GetPoint(0,x,mean)
+        sigma = ROOT.Double(0.)
+        G_sigma.GetPoint(0,x,sigma)      
+        alpha1 = ROOT.Double(0.)
+        G_alpha1.GetPoint(0,x,alpha1)
+        alpha2 = ROOT.Double(0.)
+        G_alpha2.GetPoint(0,x,alpha2)
+        n1 = ROOT.Double(0.)
+        G_n1.GetPoint(0,x,n1)                
+        n2 = ROOT.Double(0.)
+        G_n2.GetPoint(0,x,n2)  
+
+        meanVar = "_".join(["MEAN",name,self.tag])
+        self.w.factory("expr::{name}('{param}*(1+{vv_syst})',{vv_systs},{param})".format(name=meanVar,param=mean,vv_syst=scaleStr,vv_systs=','.join(scaleSysts)))
+
+        sigmaVar = "_".join(["SIGMA",name,self.tag])
+        self.w.factory("expr::{name}('{param}*(1+{vv_syst})',{vv_systs},{param})".format(name=sigmaVar,param=sigma,vv_syst=resolutionStr,vv_systs=','.join(resolutionSysts)))
+                
+        alpha1Var = "_".join(["ALPHA1",name,self.tag])            
+        alpha1 = ROOT.RooRealVar(alpha1Var,alpha1Var,alpha1)
+        getattr(self.w,'import')(alpha1,ROOT.RooFit.Rename(alpha1Var))
+        
+        alpha2Var = "_".join(["ALPHA2",name,self.tag])            
+        alpha2 = ROOT.RooRealVar(alpha2Var,alpha2Var,alpha2)
+        getattr(self.w,'import')(alpha2,ROOT.RooFit.Rename(alpha2Var))
+        
+        n1Var = "_".join(["N1",name,self.tag])
+        n1 = ROOT.RooRealVar(n1Var,n1Var,n1)
+        getattr(self.w,'import')(n1,ROOT.RooFit.Rename(n1Var))
+
+        n2Var = "_".join(["N2",name,self.tag])
+        n2 = ROOT.RooRealVar(n2Var,n2Var,n2)
+        getattr(self.w,'import')(n2,ROOT.RooFit.Rename(n2Var))        
+    
+        pdfName="_".join([name,self.tag])
+        vvMass = ROOT.RooDoubleCB(pdfName,pdfName,self.w.var(variable),self.w.function(meanVar),self.w.function(sigmaVar),self.w.function(alpha1Var),self.w.function(n1Var),self.w.function(alpha2Var),self.w.function(n2Var))
+        getattr(self.w,'import')(vvMass,ROOT.RooFit.RenameVariable(pdfName,pdfName))
+
     def addQCDShape(self,name,variable,preconstrains,nPars=4):
 
         pdfName=name+"_"+self.tag

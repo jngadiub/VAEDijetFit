@@ -41,10 +41,10 @@ class Fitter(object):
             binningx =[]
             for i in range(1,bins+2):
                 #v = mmin + i * (mmax-mmin)/float(N)
-                binningx.append(axis.GetBinLowEdge(i))
-            self.w.var(p).setMin(mini)
+                binningx.append(axis.GetBinLowEdge(i))           
             self.w.var(p).setMax(maxi)
-            print " set binning "+str(binningx)
+            self.w.var(p).setMin(mini)            
+            #print " set binning "+str(binningx)
             self.w.var(p).setBinning(ROOT.RooBinning(len(binningx)-1,array("d",binningx)))
             #a = self.w.var(p).getBinning()
             #for b in range(0,a.numBins()+1):
@@ -162,7 +162,7 @@ class Fitter(object):
         # !!! => adapt sigma for broad signal
         self.w.factory("mean[%.1f,%.1f,%.1f]"%(mass,0.8*mass,1.2*mass))
         self.w.factory("sigma[%.1f,%.1f,%.1f]"%(sigma))
-        self.w.factory("alpha[%.2f,%.2f,%.2f]"%(alpha)) 
+        self.w.factory("alpha[%.2f,%.2f,%.2f]"%(alpha))
         self.w.factory("sign[%.1f,%.1f,%.1f]"%(sign))
         self.w.factory("scalesigma[2.0,1.2,3.6]")
         gsigma = ROOT.RooFormulaVar("gsigma","@0*@1", ROOT.RooArgList(self.w.var("sigma"),self.w.var("scalesigma")))
@@ -172,6 +172,24 @@ class Fitter(object):
         self.w.factory("CBShape::cb(%s,mean,sigma,alpha,sign)"%poi) # crystal ball
         self.w.factory('SUM::'+name+'(sigfrac[0.0,0.0,0.850]*gauss,cb)') # sigfrac???
 
+    def signalResonanceDCB(self, name = 'model',poi="MVV",mass=0, singleSided=False):
+
+        ROOT.gSystem.Load("libHiggsAnalysisCombinedLimit")
+        self.w.factory("MH[1000]")
+        self.w.factory("mean[%.1f,%.1f,%.1f]"%(mass,0.8*mass,1.2*mass))
+        self.w.factory("sigma[%.1f,%.1f,%.1f]"%(mass*0.05,mass*0.02,mass*0.10))
+        self.w.factory("alpha1[1.8,0.0,2]")
+        #self.w.factory("n1[5,0,600]")
+        self.w.factory("n1[7]")
+        if singleSided:
+            self.w.factory("alpha2[1000000.0]")
+            self.w.factory("n2[0]")
+        else:
+            self.w.factory("alpha2[1.2,0.0,10]")
+            #self.w.factory("n2[5,0,50]")
+            self.w.factory("n2[4]")
+        peak_vv = ROOT.RooDoubleCB(name,'modelS',self.w.var(poi),self.w.var('mean'),self.w.function('sigma'),self.w.var('alpha1'),self.w.var('n1'),self.w.var('alpha2'),self.w.var('n2'))
+        getattr(self.w,'import')(peak_vv,ROOT.RooFit.Rename(name))
 
     def qcdShape(self,name = 'model',poi="MVV",nPars=2):
     
