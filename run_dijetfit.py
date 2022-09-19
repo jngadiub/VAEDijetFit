@@ -9,10 +9,11 @@ import CMS_lumi, tdrstyle
 from Utils import *
 
 
-def plotPValue(xsec_scan, quantiles, plot_name_suffix='', out_dir=''):
+def plotPValue(xsec_scan, quantiles, labels, plot_name_suffix='', out_dir=''):
 
-    xmin = xsec_scan[0]*1000.
-    xmax = (xsec_scan[-1]+xsec_scan[-1]*0.1)*1000.
+    scale = 1000. #injected xsec is pb but we want to plot in fb
+    xmin = xsec_scan[0]*scale
+    xmax = (xsec_scan[-1]+xsec_scan[-1]*0.1)*scale
     
     canv = get_canvas("c_Significance")
     canv.cd()
@@ -34,10 +35,11 @@ def plotPValue(xsec_scan, quantiles, plot_name_suffix='', out_dir=''):
  
     for iq,q in enumerate(quantiles):
     
-        x = array('d', xsec_scan*1000.)
+        x = array('d', xsec_scan*scale)
         ys = array('d', [])
         yp = array('d',[])
 
+        print(out_dir)
         fin = open(os.path.join(out_dir,'results_%s.txt'%q), 'r')
         for l in fin.readlines():
             l = l.split('\t')
@@ -45,6 +47,8 @@ def plotPValue(xsec_scan, quantiles, plot_name_suffix='', out_dir=''):
             ys.append(float(l[2]))
         fin.close()
     
+        print(iq,q,ys)
+        print(iq,q,yp)
         nPoints=len(x)
         gp = ROOT.TGraph(nPoints,x,yp)
         gp.SetName("PValue_%s"%q)
@@ -81,16 +85,11 @@ def plotPValue(xsec_scan, quantiles, plot_name_suffix='', out_dir=''):
     legend.SetFillStyle(0)
     legend.SetMargin(0.35)
 
-    for iq,q in enumerate(quantiles):
-        if q == 'total': q = 'bump hunt'
-        if q == 'final' : q = 'AD bump hunt'
-        legend.AddEntry(graphs[iq],q,'LP') 
+    for iq,q in enumerate(quantiles): legend.AddEntry(graphs[iq],labels[iq],'LP')
 
     graphs[0].Draw('LP')
     for g in range(1,len(graphs)): graphs[g].Draw("LPsame")
-    for l in lines:
-        print(l)
-        l.Draw("same")
+    for l in lines: l.Draw("same")
 
     for b in bans: b.Draw()
 
@@ -131,28 +130,26 @@ if __name__ == "__main__":
     qcdFile = options.qcdFile
     inputDir = options.inputDir
     sigRes = options.sigRes
-    xsec = np.array(get_xsec_scan(options.sigFile))
+    xsec = np.array(get_xsec_scan(options.sigFile)) # pb
 
     # distinctive run string
     run_str = make_run_str(sig_name=options.sigFile, sig_xsec=options.sigXsec, run_n=options.run_n, loss_id=options.lossId)
     out_dir = run_str[1:]
+    os.system('mkdir %s'%out_dir)
+    print(run_str[1:])
 
     if len(xsec) == 0:
         print "ERROR: set the cross sections to scan for signal",sigFile,"in the files_count.json file!"
         sys.exit()
 
-    # quantiles = ['q1','q5','q10','q30','q50','q70','q90','q100','total']
-    quantiles = ['q01', 'q10', 'q30', 'q50', 'q70', 'q90','q100','total']
+    quantiles = ['q05', 'q10', 'q30', 'q50', 'q70', 'q100', 'total']
+    labels = ['q:0-5%','q:5-10%','q:10-30%','q:30-50%','q:50-70%','q:70-100%','bump hunt']
 
     #if you have already run the scan, results are saved in txt files 
     if run == 0:
-        plotPValue(xsec, quantiles+['final'])
+        plotPValue(xsec, quantiles + ['final'], labels + ['AD bump hunt'], run_str, out_dir=out_dir)
+        print("NOT CHECK OUTPUT FOLDER",out_dir)
         sys.exit()
-
-    #first make workspaces (signal xsec set default to 0! -> assuming 1000fb of signal -> deriving sig histo scaling constant from that (???))
-    cmd = "python dijetfit.py -i {inputdir} --sig {sigfile} --qcd {qcdfile} --xsec 0.0 -M {mass} --res {res} --out {out_dir}".format(inputdir=inputDir, sigfile=sigFile, qcdfile=qcdFile, mass=mass, res=sigRes, out_dir=out_dir)
-    print cmd
-    os.system(cmd)
 
     #now run the scan
     x = array('d', xsec)
@@ -164,15 +161,20 @@ if __name__ == "__main__":
         ypvalue[q] = []
         outfiles.append(open(out_dir+'/results_%s.txt'%q,'w'))
 
-    # [0.0,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1] (of 1 pico-barn)
     for x in xsec:
+
+        cmd = "python dijetfit.py -i {inputdir} --sig {sigfile} --qcd {qcdfile} --xsec {xsec} -M {mass} --res {res} --out {out_dir}".format(inputdir=inputDir, xsec=x, sigfile=sigFile, qcdfile=qcdFile, mass=mass, res=sigRes, out_dir=out_dir)
+        if x!=0: cmd+=' -l' #assuming first xsec is zero so after that you can load input data with option -l
+        print cmd
+        os.system(cmd)
+
         for iq,q in enumerate(quantiles):
-     
-            cmd = 'cd {out_dir} && combine -M Significance workspace_JJ_0.0_{label}.root -m {mass} --expectSignal={xsec} -n significance_{xsec}_{label} -t -1'.format(out_dir=out_dir, xsec=x, label=q, mass=int(mass))
+
+            cmd = 'cd {out_dir} && combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} -n significance_{xsec}_{label}'.format(out_dir=out_dir, xsec=x, label=q, mass=int(mass))
             print cmd
             os.system(cmd)
 
-            cmd = 'cd {out_dir} && combine -M Significance workspace_JJ_0.0_{label}.root -m {mass} --expectSignal={xsec} -n pvalue_{xsec}_{label} -t -1 --pvalue'.format(out_dir=out_dir, xsec=x, label=q, mass=int(mass))
+            cmd = 'cd {out_dir} && combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} -n pvalue_{xsec}_{label} --pvalue'.format(out_dir=out_dir, xsec=x, label=q, mass=int(mass))
             print cmd
             os.system(cmd)
                 
@@ -199,11 +201,11 @@ if __name__ == "__main__":
 
     for x in xsec:
 
-        cmd = 'cd {out_dir} && combine -M Significance workspace_0.0_{label}.root -m {mass} --expectSignal={xsec} -n significance_{xsec} -t -1'.format(out_dir=out_dir, xsec=x,label='final',mass=int(mass))
+        cmd = 'cd {out_dir} && combine -M Significance workspace_{xsec}_{label}.root -m {mass} -n significance_{xsec}'.format(out_dir=out_dir, xsec=x,label='final',mass=int(mass))
         print cmd
         os.system(cmd)
 
-        cmd = 'cd {out_dir} && combine -M Significance workspace_0.0_{label}.root -m {mass} --expectSignal={xsec} -n pvalue_{xsec} -t -1 --pvalue'.format(out_dir=out_dir, xsec=x,label='final',mass=int(mass))
+        cmd = 'cd {out_dir} && combine -M Significance workspace_{xsec}_{label}.root -m {mass} -n pvalue_{xsec} --pvalue'.format(out_dir=out_dir, xsec=x,label='final',mass=int(mass))
         print cmd
         os.system(cmd)
             
@@ -226,6 +228,7 @@ if __name__ == "__main__":
     
     print ysig
     print ypvalue
-
-    plotPValue(xsec, quantiles + ['final'], run_str, out_dir=out_dir)
+   
+    plotPValue(xsec, quantiles + ['final'], labels + ['AD bump hunt'], run_str, out_dir=out_dir)
+    print("NOT CHECK OUTPUT FOLDER",out_dir)
   
