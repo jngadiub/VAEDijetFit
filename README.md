@@ -20,5 +20,5 @@ python run_dijetfit.py --run --i {INPUTDIR} -M {MASS} -i {INPUTDIR} --sig {SIGNA
 ```
 
 This first makes the workspaces input to combine and then computes expected significance with pre-fit Asimov dataset per each signal xsec hypothesis.
-The cross section range can be change in the `files_count.json` file. The results are saved in txt files for each quantile and for the combination. If you have run the full scan and you just
+The cross section range can be changed in the `files_count.json` file. The results are saved in txt files for each quantile and for the combination. If you have run the full scan and you just
 want to plot from the txt files then remove option `--run`.
