@@ -7,4 +7,7 @@
 *.c
 *results/
 *.sh
+*.csv
+*.out
+*.h5
 
