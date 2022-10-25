@@ -18,6 +18,8 @@ from Fitter import Fitter
 from DataCardMaker import DataCardMaker
 from Utils import *
  
+# python dijetfit.py -M 3000 -i vqr_lmfit_csv/ --qcd bkg.h5 --sig XToYYprimeTo4Q_MX3000_MY400_MYprime170_narrowReco.h5 -o vqr_lmfit_csv/ --xsec 1
+
 def get_generated_events(filename):
 
    with open('files_count.json') as f:
@@ -40,7 +42,7 @@ def get_generated_events(filename):
 def makeData(options, dataFile, q, iq, quantiles, hdata, minMJJ=0, maxMJJ=1e+04):
  
    file = h5py.File(options.inputDir+"/"+dataFile,'r')
-   sel_key_q = 'sel_q70' if q == 'q100' else 'sel_' + q # selection column for quantile q (use rejected events of q70 for q100)
+   sel_key_q = 'sel_q95' if q == 'q100' else 'sel_' + q # selection column for quantile q (use rejected events of q95 for q100)
    print "Current quantile file: %s, reading quantile %s" % (file, sel_key_q)
 
    data = file['eventFeatures'][()] 
@@ -57,7 +59,7 @@ def makeData(options, dataFile, q, iq, quantiles, hdata, minMJJ=0, maxMJJ=1e+04)
    if q=='q05':
     for e in range(data.shape[0]):
      if data[e][sel_idx]==1: hdata.Fill(data[e][mjj_idx])
-   elif q=='q100': #if 70% quantile is rejected then events are in the 100-70% slice
+   elif q=='q100': #if 95% quantile is rejected then events are in the 100-95% slice
     for e in range(data.shape[0]):
      if data[e][sel_idx]==0: hdata.Fill(data[e][mjj_idx]) 
    else: 
@@ -108,7 +110,7 @@ if __name__ == "__main__":
    binsx = [e+shift for e in binsx]
    roobins = ROOT.RooBinning(len(binsx)-1, array('d',binsx), "mjjbins")
    bins_fine = int(binsx[-1]-binsx[0])
-   quantiles = ['q05', 'q10', 'q30', 'q50', 'q70', 'q100', 'total']
+   quantiles = ['q05', 'q10', 'q30', 'q50', 'q70','q95', 'q100', 'total']
 
    # change signal fit intervall according to resonance width
    if sig_res == "na":
@@ -504,9 +506,9 @@ if __name__ == "__main__":
    
       if q == 'total': continue
 
-      card=DataCardMaker(q+"_4combo", out_dir)
+      card=DataCardMaker(q+"_4combo", out_dir) # 4combo = for combination, intermediate datacards that will be combined in the final one. 
 
-      print "********************** Add signal shape to datacard **********************"
+      print "********************** Add signal shape to intermediate datacard **********************"
       if dcb: card.addSignalShapeDCB('model_signal_mjj','mjj', os.path.join(out_dir, 'sig_fit_%s.root'%q), {'CMS_scale_j':1.0},{'CMS_res_j':1.0})
       else: card.addSignalShape('model_signal_mjj','mjj', os.path.join(out_dir, 'sig_fit_%s.root'%q), {'CMS_scale_j':1.0},{'CMS_res_j':1.0})
       if sig_xsec==0: constant = 1.0 # might give too large yields for combine to converge ???
@@ -548,7 +550,7 @@ if __name__ == "__main__":
    #d.write('quantile_q10_rate      rateParam       quantile_q10  model_qcd_mjj   (0.05*@0)/0.30  quantile_q100_rate\n')
    #d.write('quantile_q05_rate      rateParam       quantile_q05  model_qcd_mjj   (0.05*@0)/0.30  quantile_q100_rate\n')
    d.close()
-
+   dorig.close()
    cmd = 'cd {out_dir} && ' \
           'mv datacard_tmp.txt datacard_{xsec}_final.txt && ' \
           'text2workspace.py datacard_{xsec}_final.txt -o workspace_{xsec}_final.root && ' \
@@ -557,5 +559,9 @@ if __name__ == "__main__":
           'combine -M Significance workspace_{xsec}_final.root -m {mass} --pvalue -n pvalue_{xsec}'.format(out_dir=out_dir, mass=mass,xsec=sig_xsec)
    print cmd
    os.system(cmd)
+   filetypes=["root","png","C"]
+   for ft in filetypes:
+      cmd = 'find ./*.'+ft+' -mtime 0 -exec mv {} '+out_dir+' \;'
+      os.system(cmd)
    print " DONE! "
    #checkSBFit('workspace_{xsec}_{label}.root'.format(xsec=xsec,label='final'),q+"_4combo",roobins,'final.root')
