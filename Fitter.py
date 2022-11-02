@@ -107,7 +107,7 @@ class Fitter(object):
         
         self.frame=self.w.var(poi).frame()
     
-        print "Prining workspace: "
+        print "Printing workspace: "
         self.w.Print()
     
         f = ROOT.TFile.Open("fitresults.root",'READ')

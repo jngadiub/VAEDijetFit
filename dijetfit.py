@@ -236,6 +236,16 @@ if __name__ == "__main__":
       fitter.importBinnedData(histos_sig[iq],['mjj_fine'],'data')
       fres = fitter.fit('model_s','data',[ROOT.RooFit.Save(1)])
       fres.Print()
+      print "**********************************************************************************************"
+      print "signal fit result for quantile "+q
+      fres.status()
+      print " estimated distance to minimum ",fres.edm()
+      if fres.edm() < 1.00e-03:
+         print " FIT CONVERGED "
+      else:
+         print " FIT DIDN'T CONVERGE "
+         break
+      print "**********************************************************************************************"
 
       ### compute chi-square of compatibility of signal-histogram and signal model for sanity ch05eck
       # plot fit result to signal_fit_q.png for each quantile q
@@ -321,6 +331,17 @@ if __name__ == "__main__":
          fitter_QCD.importBinnedData(histos_qcd[iq],['mjj_fine'],'data_qcd')
          fres = fitter_QCD.fit('model_b','data_qcd',[ROOT.RooFit.Save(1)])
          fres.Print()
+         print "**********************************************************************************************"
+         print "qcd fit result for quantile "+q+" and function parameters "+str(nPars)
+         fres.status()
+         print " estimated distance to minimum ",fres.edm()
+         if fres.edm() < 1.00e-03:
+            print " FIT CONVERGED "
+         else:
+            print " FIT DIDN'T CONVERGE "
+            break
+         print "**********************************************************************************************"
+
 
          ### compute chi-square of compatibility of qcd-histogram and background model for sanity check
          # plot fit result to qcd_fit_q_binned.png for each quantile q
@@ -486,15 +507,20 @@ if __name__ == "__main__":
       # -M Significance: profile likelihood
       cmd = 'cd {out_dir} && ' \
             'text2workspace.py datacard_JJ_{label}.txt -o workspace_JJ_{xsec}_{label}.root && ' \
-            'combine -M FitDiagnostics workspace_JJ_{xsec}_{label}.root -m {mass} && ' \
+            'combine -M FitDiagnostics workspace_JJ_{xsec}_{label}.root -m {mass} --saveNormalizations --saveShapes -n fitdiagnostics_{xsec}_{label} && ' \
             'combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} -n significance_{xsec}_{label} && ' \
             'combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} --pvalue -n pvalue_{xsec}_{label}'.format(out_dir=out_dir, mass=mass, xsec=sig_xsec, label=q)
       print cmd
       os.system(cmd)
-      
+      fitter_QCD.delete()
       #run and visualize s+b fit as sanity check (sb_fit_mjj_qcd_q.root.pdf)
       checkSBFit('{out_dir}/workspace_JJ_{xsec}_{label}.root'.format(out_dir=out_dir, xsec=sig_xsec,label=q),q,roobins,histos_qcd[iq].GetName()+".root", nPars_QCD[iq], out_dir)
+      print " %%%%%%%%%%%%%%%%%%%%%%%% done with quantile ",q
 
+   print "------------------------------------------------- F-TEST result -------------------------------------------------"
+   for iq,q in enumerate(quantiles):
+      print " for quantile ",q," chosen ", nPars_QCD[iq]," parameter function"
+   print "--------------------------------------------------------------------------------------------------"      
    print
    print
    print "############ MAKE N-CATEGORY DATACARD AND WORKSPACE AND RUN COMBINE #############"
@@ -518,10 +544,12 @@ if __name__ == "__main__":
       card.addSystematic("CMS_res_j","param",[0.0,0.08]) 
 
       #TAKE BACKGROUND SHAPE COMES FROM BACKGROUND-ENRICHED QUANTILE SLICE --> WHICH ONE? TRY THE Q100 SLICE!
-      #card.addQCDShapeNoTag('model_qcd_mjj','mjj', os.path.join(out_dir, qcd_fname[len(quantiles)-2]), nPars_QCD[len(quantiles)-2])
-      #card.addFloatingYield('model_qcd_mjj',1, os.path.join(out_dir, qcd_fname[iq]), histos_qcd[iq].GetName())
-      #for i in range(1,nPars_QCD[len(quantiles)-2]+1): card.addSystematic("CMS_JJ_p%i"%i,"flatParam",[])
-      #card.addSystematic("model_qcd_mjj_JJ_q100_4combo_norm","flatParam",[])
+      # print "============================== debug attempt to implement a correlation among quantiles pt1 start"
+      # card.addQCDShapeNoTag('model_qcd_mjj','mjj', os.path.join(out_dir, qcd_fname[len(quantiles)-2]), nPars_QCD[len(quantiles)-2])
+      # card.addFloatingYield('model_qcd_mjj',1, os.path.join(out_dir, qcd_fname[iq]), histos_qcd[iq].GetName())
+      # for i in range(1,nPars_QCD[len(quantiles)-2]+1): card.addSystematic("CMS_JJ_p%i"%i,"flatParam",[])
+      # card.addSystematic("model_qcd_mjj_JJ_q100_4combo_norm","flatParam",[])
+      # print "============================== debug attempt to implement a correlation among quantiles pt1 end"
 
       card.addQCDShape('model_qcd_mjj','mjj', os.path.join(out_dir, qcd_fname[iq]), nPars_QCD[iq])
       card.addFloatingYield('model_qcd_mjj',1, os.path.join(out_dir, qcd_fname[iq]), histos_qcd[iq].GetName())
@@ -543,18 +571,21 @@ if __name__ == "__main__":
    d = open(os.path.join(out_dir, 'datacard_tmp.txt'),'w')
    dorig = open('{out_dir}/datacard_{xsec}_final.txt'.format(out_dir=out_dir, xsec=sig_xsec),'r')
    for l in dorig.readlines(): d.write(l)
-   #d.write('quantile_q100_rate     rateParam       quantile_q100 model_qcd_mjj   1\n')
-   #d.write('quantile_q70_rate      rateParam       quantile_q70  model_qcd_mjj   (0.20*@0)/0.30  quantile_q100_rate\n')
-   #d.write('quantile_q50_rate      rateParam       quantile_q50  model_qcd_mjj   (0.20*@0)/0.30  quantile_q100_rate\n')
-   #d.write('quantile_q30_rate      rateParam       quantile_q30  model_qcd_mjj   (0.20*@0)/0.30  quantile_q100_rate\n') 
-   #d.write('quantile_q10_rate      rateParam       quantile_q10  model_qcd_mjj   (0.05*@0)/0.30  quantile_q100_rate\n')
-   #d.write('quantile_q05_rate      rateParam       quantile_q05  model_qcd_mjj   (0.05*@0)/0.30  quantile_q100_rate\n')
+   # print "============================== debug attempt to implement a correlation among quantiles pt2 start"
+   # d.write('quantile_q100_rate     rateParam       quantile_q100 model_qcd_mjj   1\n')
+   # d.write('quantile_q95_rate      rateParam       quantile_q95  model_qcd_mjj   (0.20*@0)/0.30  quantile_q100_rate\n')   
+   # d.write('quantile_q70_rate      rateParam       quantile_q70  model_qcd_mjj   (0.20*@0)/0.30  quantile_q100_rate\n')
+   # d.write('quantile_q50_rate      rateParam       quantile_q50  model_qcd_mjj   (0.20*@0)/0.30  quantile_q100_rate\n')
+   # d.write('quantile_q30_rate      rateParam       quantile_q30  model_qcd_mjj   (0.20*@0)/0.30  quantile_q100_rate\n') 
+   # d.write('quantile_q10_rate      rateParam       quantile_q10  model_qcd_mjj   (0.05*@0)/0.30  quantile_q100_rate\n')
+   # d.write('quantile_q05_rate      rateParam       quantile_q05  model_qcd_mjj   (0.05*@0)/0.30  quantile_q100_rate\n')
+   # print "============================== debug attempt to implement a correlation among quantiles pt2 end"
    d.close()
    dorig.close()
    cmd = 'cd {out_dir} && ' \
           'mv datacard_tmp.txt datacard_{xsec}_final.txt && ' \
           'text2workspace.py datacard_{xsec}_final.txt -o workspace_{xsec}_final.root && ' \
-          'combine -M FitDiagnostics workspace_{xsec}_final.root -m {mass} && ' \
+          'combine -M FitDiagnostics workspace_{xsec}_final.root -m {mass} --saveNormalizations --saveShapes -n fitdiagnostics_{xsec} && ' \
           'combine -M Significance workspace_{xsec}_final.root -m {mass} -n significance_{xsec} && '\
           'combine -M Significance workspace_{xsec}_final.root -m {mass} --pvalue -n pvalue_{xsec}'.format(out_dir=out_dir, mass=mass,xsec=sig_xsec)
    print cmd
