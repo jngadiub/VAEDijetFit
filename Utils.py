@@ -2,6 +2,7 @@ import h5py, math, commands, random
 from array import array
 import numpy as np
 import time, sys, os, optparse, json, copy
+import copy
 
 import ROOT
 ROOT.gStyle.SetOptStat(0)
@@ -10,6 +11,45 @@ import CMS_lumi, tdrstyle
 tdrstyle.setTDRStyle()
 ROOT.gROOT.SetBatch(True)
 ROOT.RooRandom.randomGenerator().SetSeed(random.randint(0, 1e+6))
+
+def get_canvas(cname):
+
+    tdrstyle.setTDRStyle()
+
+    H_ref = 630
+    W_ref = 600
+    W = W_ref
+    H  = H_ref
+
+    T = 0.08*H_ref
+    B = 0.12*H_ref
+    L = 0.12*W_ref
+    R = 0.04*W_ref
+
+    canvas = ROOT.TCanvas(cname,cname,50,50,W,H)
+    canvas.SetFillColor(0)
+    canvas.SetBorderMode(0)
+    canvas.SetFrameFillStyle(0)
+    canvas.SetFrameBorderMode(0)
+    canvas.SetLeftMargin( L/W+0.01 )
+    canvas.SetRightMargin( R/W+0.03 )
+    canvas.SetTopMargin( 0.07 ) #/T/H
+    canvas.SetBottomMargin( B/H )
+    #canvas.SetGrid()
+    canvas.SetLogy()
+
+    return canvas
+    
+def make_run_str(sig_name, sig_xsec=10, run_n=0, loss_id='rk5'):
+    return '_' + sig_name[:-3] + '_xsec' + str(sig_xsec) + '_run' + str(run_n) + '_loss_' + loss_id 
+
+def get_xsec_scan(filename):
+
+    with open('files_count.json') as f:
+        data = json.load(f)
+
+    for k in data.keys():
+        if k in filename or k.replace('_EXT','') in filename: return data[k][2]
 
 # function to extract string from function -> in order write a proper json file
 def returnString(func,ftype):
@@ -70,36 +110,30 @@ def returnString(func,ftype):
         else:
             return ""
 
-# define color palette for pvalue plotting
 def get_palette(mode):
-    palette = {}
-    palette['gv'] = [] 
-    palette['mass'] = []
-    
-    colors_gv = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728',
+
+ palette = {}
+ palette['gv'] = [] 
+ 
+ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728',
               '#9467bd', '#8c564b', '#e377c2', '#7f7f7f',
               '#bcbd22', '#17becf']
-    colors_mass = ['#3E96A1', '#EC4E20', '#FF9505', '#713E5A']    
-    
 
-    for c in colors_gv:
-        palette['gv'].append(c)
-    for c in colors_mass:
-        palette['mass'].append(c)
-
-    return palette[mode]
-
+ for c in colors:
+  palette['gv'].append(c)
+ 
+ return palette[mode]
  
 def getBinning(binsMVV,minx,maxx,bins):
     l=[]
     if binsMVV=="":
-        print(" do this")
-        print(binsMVV)
+        print " do this"
+        print binsMVV
         for i in range(0,bins+1):
             l.append(minx + i* (maxx - minx)/bins)
     else:
-        print("dot that")
-        print(binsMVV)
+        print "dot that"
+        print binsMVV
         s = binsMVV.split(",")
         for w in s:
             l.append(int(w))
@@ -112,52 +146,9 @@ def truncate(binning,mmin,mmax):
             res.append(b)
     return res
 
-def make_run_str(sig_name, sig_xsec=10, run_n=0, loss_id='rk5'):
-    return '_' + sig_name[:-3] + '_xsec' + str(sig_xsec) + '_run' + str(run_n) + '_loss_' + loss_id 
-
-
-def make_dir_str(sig_name, sig_xsec=10, run_n=0, loss_id='rk5'):
-    return sig_name + '_xsec' + str(sig_xsec) + '_run' + str(run_n) + '_loss_' + loss_id 
-
-
-def get_canvas(cname):
-
-    tdrstyle.setTDRStyle()
-
-    H_ref = 630
-    W_ref = 600
-    W = W_ref
-    H  = H_ref
-
-    T = 0.08*H_ref
-    B = 0.12*H_ref
-    L = 0.12*W_ref
-    R = 0.04*W_ref
-
-    canvas = ROOT.TCanvas(cname,cname,50,50,W,H)
-    canvas.SetFillColor(0)
-    canvas.SetBorderMode(0)
-    canvas.SetFrameFillStyle(0)
-    canvas.SetFrameBorderMode(0)
-    canvas.SetLeftMargin( L/W+0.01 )
-    canvas.SetRightMargin( R/W+0.03 )
-    canvas.SetTopMargin( 0.07 ) #/T/H
-    canvas.SetBottomMargin( B/H )
-    #canvas.SetGrid()
-    canvas.SetLogy()
-
-    return canvas
-
-def get_xsec_scan(filename):
-
-    with open('files_count.json') as f:
-        data = json.load(f)
-
-    for k in data.keys():
-        if k in filename or k.replace('_EXT','') in filename: return data[k][2]
 
 def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_names,chi2,ndof,canvname, plot_dir, has_sig = False):
-    #FIXMEEEEE use get canvas for this!!!
+
     c1 =ROOT.TCanvas("c1","",800,800)
     c1.SetLogy()
     c1.Divide(1,2,0,0,0)
@@ -167,6 +158,8 @@ def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_names,chi2,ndof,canvn
     p11_1.SetPad(0.01,0.26,0.99,0.98)
     p11_1.SetLogy()
     p11_1.SetRightMargin(0.05)
+
+
 
     p11_1.SetTopMargin(0.1)
     p11_1.SetBottomMargin(0.02)
@@ -264,10 +257,21 @@ def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_names,chi2,ndof,canvn
     line2.Draw("same")   
     c1.Update()
 
-    canvname+='_'+str(nPars)
     canvname+='.png'
-    c1.SaveAs(plot_dir + canvname)
-    c1.SaveAs(canvname.replace("png","C"),"C")
+    c1.SaveAs(plot_dir + "/" + canvname)
+    #c1.SaveAs(canvname.replace("png","C"),"C")
+
+def print_roohist(h):
+    a_x = array('d', [0.])
+    a_val = array('d', [0.])
+    a_data = array('d', [0.])
+
+    for p in range (0,h.GetN()):
+        h.GetPoint(p, a_x, a_val)
+        e = h.GetErrorY(p)
+        print("%i %.3f %.3f %.3f" % (p, a_x[0], a_val[0], e))
+
+
 
 def calculateChi2(g_pulls, nPars, ranges = None, excludeZeros = True, dataHist = None):
      
@@ -279,14 +283,22 @@ def calculateChi2(g_pulls, nPars, ranges = None, excludeZeros = True, dataHist =
     a_x = array('d', [0.])
     a_val = array('d', [0.])
     a_data = array('d', [0.])
-    already_zero = False
+
+    last_nonzero = 0
+
+    if(excludeZeros):
+        #find max non-zero bin
+        for p in range (0,g_pulls.GetN()):
+            g_pulls.GetPoint(p, a_x, a_val)
+            dataHist.GetPoint(p, a_x, a_data)
+            if(a_data[0] > 0.): last_nonzero = p
+
     for p in range (0,g_pulls.GetN()):
     
         g_pulls.GetPoint(p, a_x, a_val)
         x = a_x[0]
         pull = a_val[0]
 
-        #print x,pull,pow(pull,2)
 
         add = True
         if(ranges is not None and len(ranges) > 0):
@@ -295,15 +307,15 @@ def calculateChi2(g_pulls, nPars, ranges = None, excludeZeros = True, dataHist =
                 if(x >= range_[0] and x<= range_[1]):
                     add = True
          
-        if(excludeZeros and dataHist is not None):
-            dataHist.GetPoint(p, a_x, a_data)
-            if(a_data[0] <= 0.):
-                #print("Data %.0f for x = %.0f" % (a_data[0], a_x[0]))
-                #include 'first' zero point, exclude rest
-                if(already_zero): add = False
-                else: already_zero = True
+        if(excludeZeros):
+            #include 1 zero after last bin
+            if(p > last_nonzero +1):
+                add = False
 
         if(add):
+            if (dataHist is not None ):
+                dataHist.GetPoint(p, a_x, a_data)
+                print(x, a_data[0], pull)
             NumberOfObservations_VarBin+=1
             chi2_VarBin += pow(pull,2)
             
@@ -342,7 +354,8 @@ def load(iFile,iVar,iName,iHist,iCut):
 def roundTo(arr, base):
     for i in range(len(arr)):
         x = arr[i]
-        new_x = int(base * round(float(x)/base)) + base/2
+        if(x % base == base/2): new_x = x
+        else: new_x = int(base * round(float(x)/base)) + base/2
         arr[i] = new_x
 
 
@@ -374,12 +387,7 @@ def fill_hist(v, h, event_num = None):
 def load_h5_sb(h_file, hist, correctStats=False, sb1_edge = -1., sb2_edge = -1.):
     event_num = None
     with h5py.File(h_file, "r") as f:
-        try:
-            mjj = np.array(f['mjj'][()])
-        except:
-            n_events = 500000000
-            mjj = f['eventFeatures'][:n_events,0]
-
+        mjj = np.array(f['mjj'][()])
         if(correctStats):
             event_num = f['event_num'][()]
 
@@ -404,11 +412,7 @@ def load_h5_sig(h_file, hist, sig_mjj, requireWindow = False, correctStats =Fals
         try:
             mjj = f['jet_kinematics'][:, 0]
         except:
-            try:
-                mjj = f['mjj'][()]
-            except:
-                n_events = 500000000
-                mjj = f['eventFeatures'][:n_events,0]
+            mjj = f['mjj'][()]
 
         num_evts = mjj.shape[0]
         if(mixed):
@@ -432,12 +436,8 @@ def load_h5_sig(h_file, hist, sig_mjj, requireWindow = False, correctStats =Fals
 
 def check_rough_sig(h_file, m_low, m_high):
     with h5py.File(h_file, "r") as f:
-        try:
-            mjj = f['mjj'][()]
-        except:
-            n_events = 500000000
-            mjj = f['eventFeatures'][:n_events,0]
-        is_sig = 0 #f['truth_label'][()]
+        mjj = f['mjj'][()]
+        is_sig = f['truth_label'][()]
 
     in_window = (mjj > m_low) & (mjj < m_high)
     sig_events = is_sig > 0.9
@@ -446,17 +446,53 @@ def check_rough_sig(h_file, m_low, m_high):
     B = mjj[bkg_events & in_window].shape[0]
     print("Mjj window %f to %f " % (m_low, m_high))
     print("S = %i, B = %i, S/B %f, sigificance ~ %.1f " % (S, B, float(S)/B, S/np.sqrt(B)))
+
+def get_below_bins(h, min_count = 5):
+    out = []
+    #skip first bin (can't merge left)
+    for i in range(2, h.GetNbinsX()+1):
+        c = h.GetBinContent(i)
+
+        #remove left edge of bin if below thresh
+        if( c < min_count): out.append(i-1)
+    return out
+
+def get_rebinning(binsx, histos_sb, min_count = 5):
+    h_rebin = histos_sb.Clone("h_rebin_temp")
+    rebins = copy.deepcopy(binsx)
+    below_min = True
+
+    while(below_min):
+        h_rebin = h_rebin.Rebin(len(rebins)-1, "", array('d', rebins))
+        below_bins = get_below_bins(h_rebin, min_count = min_count)
+        if(len(below_bins) <= 1): below_min = False
+        else:
+            rebins.pop(below_bins[-1])
+
+    #print("Done with rebinning!")
+    #print("new bins:", rebins)
+    #h_rebin.Print("all")
+
+    return rebins
+
+
+
+
+
     
 def checkSBFit(filename,label,roobins,plotname, nPars, plot_dir):
     
     fin = ROOT.TFile.Open(filename,'READ')
     workspace = fin.w
 
+    sig_name = 'shapeSig_model_signal_mjj_JJ_%s' % label
     model_tot = workspace.pdf('model_s')
     model_qcd = workspace.pdf('model_b')
-    model_sig = workspace.pdf('shapeSig_model_signal_mjj_JJ_%s' % label)
+    model_sig = workspace.pdf(sig_name)
     var = workspace.var('mjj')
     data = workspace.data('data_obs')
+    data.Print("V")
+
 
 
     #sig_norm_var_total = workspace.function('n_exp_binJJ_%s_proc_model_signal_mjj' % label).getVal()
@@ -479,32 +515,63 @@ def checkSBFit(filename,label,roobins,plotname, nPars, plot_dir):
 
     model_tot.Print("v")
 
+    #default roofit normalization is total range divided by number of bins, we want per 100 GeV
+
+
+    #rescale so pdfs are in evts per 100 GeV
+    low = roobins.lowBound()
+    high = roobins.highBound()
+    n = roobins.numBoundaries() - 1
+
+    #RootFit default normalization is full range divided by number of bins
+    default_norm = (high - low)/ n
+
+    rescale = 100./ default_norm
+
+    fit_norm = ROOT.RooFit.Normalization(rescale,ROOT.RooAbsReal.Relative)
+
+
     
     fres = model.fitTo(data,ROOT.RooFit.SumW2Error(1),ROOT.RooFit.Minos(0),ROOT.RooFit.Verbose(0),ROOT.RooFit.Save(1),ROOT.RooFit.NumCPU(8)) 
     #fres.Print()
     
     frame = var.frame()
-    data.plotOn(frame,ROOT.RooFit.DataError(ROOT.RooAbsData.Poisson), ROOT.RooFit.Binning(roobins),ROOT.RooFit.Name("data_obs"),ROOT.RooFit.Invisible())
-    model.getPdf('JJ_%s'%label).plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kRed-7),ROOT.RooFit.LineColor(ROOT.kRed-7),ROOT.RooFit.Name(fres.GetName()))
-    model.getPdf('JJ_%s'%label).plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed+1),ROOT.RooFit.Name("model_s"))
+    
+    data.plotOn(frame, ROOT.RooFit.DataError(ROOT.RooAbsData.Poisson), ROOT.RooFit.Binning(roobins),ROOT.RooFit.Name("data_obs"),ROOT.RooFit.Invisible(), 
+            ROOT.RooFit.Rescale(rescale))
+    model.getPdf('JJ_%s'%label).plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kRed-7),ROOT.RooFit.LineColor(ROOT.kRed-7),ROOT.RooFit.Name(fres.GetName()),
+            fit_norm)
+    model.getPdf('JJ_%s'%label).plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed+1),ROOT.RooFit.Name("model_s"), fit_norm)
+
     #model_qcd.plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kGreen-7),ROOT.RooFit.LineColor(ROOT.kGreen-7), ROOT.RooFit.Name("Background"))
     #model_qcd.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed+1),ROOT.RooFit.Name("Background"))
     #sig_norm_pdf.plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kBlue-7),ROOT.RooFit.LineColor(ROOT.kBlue-7), ROOT.RooFit.Name("Signal"))
     #sig_norm_pdf.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kBlue+1), ROOT.RooFit.Name("Signal"))
 
-    frame3 = var.frame()
-    #average bin edges instead of bin center
+
     useBinAverage = True
     hpull = frame.pullHist("data_obs","model_s",useBinAverage)
+    hresid = frame.residHist("data_obs", "model_s", False, useBinAverage)
+    dhist = ROOT.RooHist(frame.findObject('data_obs', ROOT.RooHist.Class()))
+
+    #print_roohist(dhist)
+
+
+    chi2, ndof = calculateChi2(hpull, nPars + 1, excludeZeros = True, dataHist = dhist)
+
+    #replot data on top 
+    data.plotOn(frame,ROOT.RooFit.DataError(ROOT.RooAbsData.SumW2), ROOT.RooFit.Binning(roobins),ROOT.RooFit.Name("data_obs"),ROOT.RooFit.XErrorSize(0), 
+            ROOT.RooFit.Rescale(rescale))
+
+    frame3 = var.frame()
+    #average bin edges instead of bin center
     frame3.addPlotable(hpull,"X0 P E1")
     
-    data.plotOn(frame,ROOT.RooFit.DataError(ROOT.RooAbsData.Poisson), ROOT.RooFit.Binning(roobins),ROOT.RooFit.Name("data_obs"),ROOT.RooFit.XErrorSize(0))
-    dhist = ROOT.RooHist(frame.findObject('data_obs', ROOT.RooHist.Class()))
-    chi2, ndof = calculateChi2(hpull, nPars + 1, excludeZeros = True, dataHist = dhist)
+
     #chi2,ndof = calculateChi2(hpull, nPars +1)
 
     pdf_names = ["model_s"] 
-    PlotFitResults(frame,fres.GetName(),nPars,frame3,"data_obs", pdf_names,chi2,ndof,'sbFit_'+plotname, plot_dir, has_sig = True)
+    PlotFitResults(frame,fres.GetName(),nPars+1,frame3,"data_obs", pdf_names,chi2,ndof,'sbFit_'+plotname, plot_dir, has_sig = True)
 
     print "chi2,ndof are", chi2, ndof
     return chi2, ndof
@@ -536,3 +603,98 @@ def f_test(nParams, nDof, chi2, thresh = 0.05):
             best_i = i
 
     return best_i
+
+def checkSBFitFinal(filename,label,roobins,plotname, nPars, plot_dir):
+    
+    fin = ROOT.TFile.Open(filename,'READ')
+    workspace = fin.w
+
+    sig_name = 'shapeSig_model_signal_mjj_JJ_%s' % label
+    bkg_name = "pdf_binJJ_%s"%label
+
+    model_tot_sb = workspace.pdf('model_s')
+    model_tot_bonly = model_qcd = workspace.pdf('model_b')
+
+    model_sb_1cat = workspace.pdf('model_s').getComponents()
+    model_sb_ShapeSig_1cat = model_sb_1cat[sig_name]
+    model_sb_ShapeBpS_1cat = model_sb_1cat[bkg_name]
+    model_bonly_1cat = workspace.pdf('model_b').getComponents()
+    model_bonly_1cat = model_bonly_1cat[bkg_name+"_bonly"]    
+    
+    print("SIGNAL ONLY MODEL FOR CATEGORY",label)
+    model_sb_ShapeSig_1cat.Print("V")
+    print("S+B MODEL FOR CATEGORY",label)
+    model_sb_ShapeBpS_1cat.Print("v")    
+    print("B-ONLY MODEL FOR CATEGORY",label)
+    model_bonly_1cat.Print("V")    
+
+    var = workspace.var('mjj')
+    data_all = workspace.data('data_obs')
+    data_all.Print("V")
+    print("TOTAL DATA OBS",data_all.sumEntries())
+
+    data_1cat = workspace.data('data_obs').reduce("CMS_channel==CMS_channel::JJ_%s"%label)
+    data_1cat.Print("V")
+    print("DATA OBS FOR CATEGORY",label,"=",data_1cat.sumEntries())
+
+    model = model_tot_sb
+
+    model.Print("v")
+
+    #default roofit normalization is total range divided by number of bins, we want per 100 GeV
+
+
+    #rescale so pdfs are in evts per 100 GeV
+    low = roobins.lowBound()
+    high = roobins.highBound()
+    n = roobins.numBoundaries() - 1
+
+    #RootFit default normalization is full range divided by number of bins
+    default_norm = (high - low)/ n
+
+    rescale = 100./ default_norm
+
+    fit_norm = ROOT.RooFit.Normalization(rescale,ROOT.RooAbsReal.Relative)
+
+
+    
+    fres = model.fitTo(data_all,ROOT.RooFit.SumW2Error(1),ROOT.RooFit.Minos(0),ROOT.RooFit.Verbose(0),ROOT.RooFit.Save(1),ROOT.RooFit.NumCPU(8)) 
+    fres.Print()
+    
+    frame = var.frame()
+    
+    data_1cat.plotOn(frame, ROOT.RooFit.DataError(ROOT.RooAbsData.Poisson), ROOT.RooFit.Binning(roobins),ROOT.RooFit.Invisible(), 
+            ROOT.RooFit.Rescale(rescale))
+    model_sb_ShapeBpS_1cat.plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kRed-7),ROOT.RooFit.LineColor(ROOT.kRed-7),ROOT.RooFit.Name(fres.GetName()),
+            fit_norm)
+    model_sb_ShapeBpS_1cat.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed+1),ROOT.RooFit.Name("model_s"), fit_norm)
+
+    #model_qcd.plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kGreen-7),ROOT.RooFit.LineColor(ROOT.kGreen-7), ROOT.RooFit.Name("Background"))
+    #model_qcd.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed+1),ROOT.RooFit.Name("Background"))
+    #sig_norm_pdf.plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kBlue-7),ROOT.RooFit.LineColor(ROOT.kBlue-7), ROOT.RooFit.Name("Signal"))
+    #sig_norm_pdf.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kBlue+1), ROOT.RooFit.Name("Signal"))
+
+
+    useBinAverage = True
+    hpull = frame.pullHist("h_data_obs","model_s",useBinAverage)
+    hresid = frame.residHist("h_data_obs", "model_s", False, useBinAverage)
+    dhist = ROOT.RooHist(frame.findObject('h_data_obs', ROOT.RooHist.Class()))
+
+    chi2, ndof = calculateChi2(hpull, nPars + 1, excludeZeros = True, dataHist = dhist)
+
+    #replot data on top 
+    data_1cat.plotOn(frame,ROOT.RooFit.DataError(ROOT.RooAbsData.SumW2), ROOT.RooFit.Binning(roobins),ROOT.RooFit.XErrorSize(0), 
+            ROOT.RooFit.Rescale(rescale))
+
+    frame3 = var.frame()
+    #average bin edges instead of bin center
+    frame3.addPlotable(hpull,"X0 P E1")
+    
+
+    #chi2,ndof = calculateChi2(hpull, nPars +1)
+
+    pdf_names = ["model_s"] 
+    PlotFitResults(frame,fres.GetName(),nPars+1,frame3,"data_obs", pdf_names,chi2,ndof,'sbFit_'+plotname, plot_dir, has_sig = True)
+
+    print "chi2,ndof are", chi2, ndof
+    return chi2, ndof

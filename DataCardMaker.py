@@ -153,7 +153,7 @@ class DataCardMaker:
         self.contributions.append({'name':name,'pdf':pdfName,'ID':ID,'yield':events})
 
     # add a floatable number of events value
-    def addFloatingYield(self,name,ID,filename,histoName,mini=0,maxi=1e+9,constant=False):
+    def addFloatingYield(self,name,ID,filename,histoName,mini=0,maxi=1e+7,constant=False):
         pdfName="_".join([name,self.tag])
         pdfNorm="_".join([name,self.tag,"norm"])
         f=ROOT.TFile(filename)
@@ -163,7 +163,21 @@ class DataCardMaker:
         if constant:
             self.w.var(pdfNorm).setConstant(1)
         self.contributions.append({'name':name,'pdf':pdfName,'ID':ID,'yield':1.0})
-                
+
+    def addFloatingYieldCorr(self,name,ID,filename,histoName,fraction,mini=0,maxi=1e+7):
+        pdfName="_".join([name,self.tag])
+        pdfNorm="_".join([name,self.tag,"norm"])
+        f=ROOT.TFile(filename)
+        histogram=f.Get(histoName)
+        events=histogram.Integral()
+        self.w.factory("{name}[{val},{mini},{maxi}]".format(name="shapeBkg_model_qcd_mjj_JJ_q100__norm",val=875147.0,mini=mini,maxi=maxi)) #the value here can be whatever
+        fName = "_".join([name,self.tag,"fraction"])
+        self.w.factory("{name}[{val},{mini},{maxi}]".format(name=fName,val=fraction,mini=0,maxi=1))
+        self.w.var(fName).setConstant(1)
+        prod = ROOT.RooFormulaVar(pdfNorm,"@0*@1", ROOT.RooArgList(self.w.var("shapeBkg_model_qcd_mjj_JJ_q100__norm"),self.w.var(fName)))
+        getattr(self.w,'import')(prod,ROOT.RooFit.Rename(pdfNorm))
+        self.contributions.append({'name':name,'pdf':pdfName,'ID':ID,'yield':1.0})
+
     def addSignalShape(self, name, variable, jsonFile, scale ={}, resolution={}):
     
         pdfName="_".join([name,self.tag])
@@ -321,21 +335,35 @@ class DataCardMaker:
         MVV=variable
         if self.w.var(MVV) == None: self.w.factory(MVV+"[0,10000]")
         
+        errs = [100,200,100,100,100]
+        values = [9.28433e+00,1.03641e+01,2.35256e+00,4.17695e-01,1.00000e+01]
         f = ROOT.TFile.Open(preconstrains,'READ')
         parsG = [f.Get('p%i'%i) for i in range(1,nPars+1)]
         pars_val = [ROOT.Double(0.) for i in range(0,nPars)]       
         for i in range(1,nPars+1):
          x = ROOT.Double(0.)
-         parsG[i-1].GetPoint(0,x,pars_val[i-1])
+         #parsG[i-1].GetPoint(0,x,pars_val[i-1])
          pName="_".join(["CMS_JJ_p%i"%i,self.tag])
-         errUp=pars_val[i-1]+parsG[i-1].GetErrorYhigh(0)*100.
-         errDown=pars_val[i-1]-parsG[i-1].GetErrorYlow(0)*100.
+         if nPars==6 and i==5:
+            errUp=5000
+            errDown=1
+            pars_val[i-1] = 1000
+         elif nPars==6 and i==6:
+            errUp=2500
+            errDown=0
+            pars_val[i-1] = 1600
+         else:
+          errUp=errs[i-1] #pars_val[i-1]+parsG[i-1].GetErrorYhigh(0)*100.
+          errDown=-errs[i-1] #pars_val[i-1]-parsG[i-1].GetErrorYlow(0)*100.
+          pars_val[i-1] = values[i-1]
          print i,pName,pars_val[i-1],parsG[i-1].GetErrorYhigh(0),parsG[i-1].GetErrorYlow(0),errUp,errDown
          self.w.factory("{name}[{val},{errDown},{errUp}]".format(name=pName,val=pars_val[i-1],errUp=errUp,errDown=errDown))
         
         if nPars==2: model = ROOT.RooGenericPdf(pdfName, "pow(1-@0/13000., @1)/pow(@0/13000., @2)", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1_%s"%self.tag), self.w.var("CMS_JJ_p2_%s"%self.tag)))  
         elif nPars==3: model = ROOT.RooGenericPdf(pdfName, "pow(1-@0/13000., @1)/pow(@0/13000., @2+@3*log(@0/13000.))", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1_%s"%self.tag), self.w.var("CMS_JJ_p2_%s"%self.tag), self.w.var("CMS_JJ_p3_%s"%self.tag)))
         elif nPars==4: model = ROOT.RooGenericPdf(pdfName, "pow(1-@0/13000., @1)/ ( pow(@0/13000., @2+@3*log(@0/13000.)+@4*pow(log(@0/13000.),2)) )", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1_%s"%self.tag), self.w.var("CMS_JJ_p2_%s"%self.tag), self.w.var("CMS_JJ_p3_%s"%self.tag), self.w.var("CMS_JJ_p4_%s"%self.tag)))
+        elif nPars==5: model = ROOT.RooGenericPdf(pdfName, "pow(exp(-@0/13000.),@4) * pow(1-@0/13000., @1)/ ( pow(@0/13000., @2+@3*log(@0/13000.)+@4*pow(log(@0/13000.),2)) )", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1_%s"%self.tag), self.w.var("CMS_JJ_p2_%s"%self.tag), self.w.var("CMS_JJ_p3_%s"%self.tag), self.w.var("CMS_JJ_p4_%s"%self.tag), self.w.var("CMS_JJ_p5_%s"%self.tag) ))
+        elif nPars==6: model = ROOT.RooGenericPdf(pdfName, "(0.5*tanh((@0-@6)/@5) + .5)*pow(1-@0/13000., @1)/ ( pow(@0/13000., @2+@3*log(@0/13000.)+@4*pow(log(@0/13000.),2)) )", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1_%s"%self.tag), self.w.var("CMS_JJ_p2_%s"%self.tag), self.w.var("CMS_JJ_p3_%s"%self.tag), self.w.var("CMS_JJ_p4_%s"%self.tag), self.w.var("CMS_JJ_p5_%s"%self.tag), self.w.var("CMS_JJ_p6_%s"%self.tag)))
 
         getattr(self.w,'import')(model,ROOT.RooFit.Rename(pdfName))
 
@@ -346,20 +374,34 @@ class DataCardMaker:
         MVV=variable
         if self.w.var(MVV) == None: self.w.factory(MVV+"[0,10000]")
         
+        errs = [100,200,100,100,100]
+        values = [9.28433e+00,1.03641e+01,2.35256e+00,4.17695e-01,1.00000e+01]
         f = ROOT.TFile.Open(preconstrains,'READ')
         parsG = [f.Get('p%i'%i) for i in range(1,nPars+1)]
         pars_val = [ROOT.Double(0.) for i in range(0,nPars)]       
         for i in range(1,nPars+1):
          x = ROOT.Double(0.)
-         parsG[i-1].GetPoint(0,x,pars_val[i-1])
+         #parsG[i-1].GetPoint(0,x,pars_val[i-1])
          pName="CMS_JJ_p%i"%i
-         errUp=pars_val[i-1]+parsG[i-1].GetErrorYhigh(0)*100.
-         errDown=pars_val[i-1]-parsG[i-1].GetErrorYlow(0)*100.
+         if nPars==6 and i==5:
+            errUp=5000
+            errDown=1
+            pars_val[i-1] = 1000
+         elif nPars==6 and i==6:
+            errUp=2500
+            errDown=0
+            pars_val[i-1] = 1600
+         else:
+          errUp=errs[i-1] #pars_val[i-1]+parsG[i-1].GetErrorYhigh(0)*100.
+          errDown=-errs[i-1] #pars_val[i-1]-parsG[i-1].GetErrorYlow(0)*100.
+          pars_val[i-1] = values[i-1]
          print i,pName,pars_val[i-1],parsG[i-1].GetErrorYhigh(0),parsG[i-1].GetErrorYlow(0),errUp,errDown
          self.w.factory("{name}[{val},{errDown},{errUp}]".format(name=pName,val=pars_val[i-1],errUp=errUp,errDown=errDown))
         
         if nPars==2: model = ROOT.RooGenericPdf(pdfName, "pow(1-@0/13000., @1)/pow(@0/13000., @2)", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1"), self.w.var("CMS_JJ_p2")))  
         elif nPars==3: model = ROOT.RooGenericPdf(pdfName, "pow(1-@0/13000., @1)/pow(@0/13000., @2+@3*log(@0/13000.))", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1"), self.w.var("CMS_JJ_p2"), self.w.var("CMS_JJ_p3")))
         elif nPars==4: model = ROOT.RooGenericPdf(pdfName, "pow(1-@0/13000., @1)/ ( pow(@0/13000., @2+@3*log(@0/13000.)+@4*pow(log(@0/13000.),2)) )", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1"), self.w.var("CMS_JJ_p2"), self.w.var("CMS_JJ_p3"), self.w.var("CMS_JJ_p4")))
+        elif nPars==5: model = ROOT.RooGenericPdf(pdfName, " pow(exp(-@0/13000.), @4) * pow(1-@0/13000., @1)/ ( pow(@0/13000., @2+@3*log(@0/13000.)+@4*pow(log(@0/13000.),2)) )", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1"), self.w.var("CMS_JJ_p2"), self.w.var("CMS_JJ_p3"), self.w.var("CMS_JJ_p4"), self.w.var("CMS_JJ_p5")))
+        elif nPars==6: model = ROOT.RooGenericPdf(pdfName, "(0.5*tanh((@0-@6)/@5) + .5)*pow(1-@0/13000., @1)/ ( pow(@0/13000., @2+@3*log(@0/13000.)+@4*pow(log(@0/13000.),2)) )", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1"), self.w.var("CMS_JJ_p2"), self.w.var("CMS_JJ_p3"), self.w.var("CMS_JJ_p4"), self.w.var("CMS_JJ_p5"), self.w.var("CMS_JJ_p6")))
 
         getattr(self.w,'import')(model,ROOT.RooFit.Rename(pdfName))

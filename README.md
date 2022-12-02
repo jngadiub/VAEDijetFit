@@ -10,8 +10,10 @@ Run the 1-category and N-category s+b fit with injected signal of a chosen cross
 h5 files are taken from the input folder set with `-i`. The `--sig` and `--qcd` should be relative to that input folder.
 
 ```
-python dijetfit.py --xsec {XSEC} -M {MASS} -i {INPUTDIR} --sig {SIGNALPATH} --qcd {QCDPATH}
+python dijetfit.py --xsec {XSEC} -M {MASS} -i {INPUTDIR} --sig {SIGNALPATH} --qcd {QCDPATH} --out {OUTPUTDIR} -C
 ```
+
+For implementation of full correlation of background shapes and normalizations among quantiles add option `-C`. If you want to run combine FitDiagnostics and Significance add option `-R`.
 
 ### Automatic scan of p-value/significance vs cross section
 
