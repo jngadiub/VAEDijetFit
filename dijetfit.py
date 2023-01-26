@@ -607,12 +607,12 @@ if __name__ == "__main__":
    d = open(os.path.join(out_dir, 'datacard_tmp.txt'),'w')
    dorig = open('{out_dir}/datacard_{xsec}_final.txt'.format(out_dir=out_dir, xsec=sig_xsec),'r')
    for l in dorig.readlines(): d.write(l)
-   if options.correlateB == True:
-      d.write('JJ_q0_rate     rateParam       JJ_q0 model_qcd_mjj   1\n')
-      d.write('JJ_q30_rate      rateParam       JJ_q30  model_qcd_mjj   (0.20*@0)/0.30  JJ_q0_rate\n')
-      d.write('JJ_q50_rate      rateParam       JJ_q50  model_qcd_mjj   (0.20*@0)/0.30  JJ_q0_rate\n')
-      d.write('JJ_q70_rate      rateParam       JJ_q70  model_qcd_mjj   (0.20*@0)/0.30  JJ_q0_rate\n') 
-      d.write('JJ_q90_rate      rateParam       JJ_q90  model_qcd_mjj   (0.10*@0)/0.30  JJ_q0_rate\n')
+   #if options.correlateB == True:
+   #   d.write('JJ_q0_rate     rateParam       JJ_q0 model_qcd_mjj   1\n')
+   #   d.write('JJ_q30_rate      rateParam       JJ_q30  model_qcd_mjj   (0.20*@0)/0.30  JJ_q0_rate\n')
+   #   d.write('JJ_q50_rate      rateParam       JJ_q50  model_qcd_mjj   (0.20*@0)/0.30  JJ_q0_rate\n')
+   #   d.write('JJ_q70_rate      rateParam       JJ_q70  model_qcd_mjj   (0.20*@0)/0.30  JJ_q0_rate\n') 
+   #   d.write('JJ_q90_rate      rateParam       JJ_q90  model_qcd_mjj   (0.10*@0)/0.30  JJ_q0_rate\n')
    d.close()
    dorig.close()
    if options.run_combine == True:
