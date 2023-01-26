@@ -168,13 +168,16 @@ class DataCardMaker:
         pdfName="_".join([name,self.tag])
         pdfNorm="_".join([name,self.tag,"norm"])
         f=ROOT.TFile(filename)
+        print(histoName)
+        print(filename)
+        f.ls()
         histogram=f.Get(histoName)
         events=histogram.Integral()
-        self.w.factory("{name}[{val},{mini},{maxi}]".format(name="shapeBkg_model_qcd_mjj_JJ_q100__norm",val=875147.0,mini=mini,maxi=maxi)) #the value here can be whatever
+        self.w.factory("{name}[{val},{mini},{maxi}]".format(name="shapeBkg_model_qcd_mjj_JJ_q0__norm",val=875147.0,mini=mini,maxi=maxi)) #the value here can be whatever
         fName = "_".join([name,self.tag,"fraction"])
         self.w.factory("{name}[{val},{mini},{maxi}]".format(name=fName,val=fraction,mini=0,maxi=1))
         self.w.var(fName).setConstant(1)
-        prod = ROOT.RooFormulaVar(pdfNorm,"@0*@1", ROOT.RooArgList(self.w.var("shapeBkg_model_qcd_mjj_JJ_q100__norm"),self.w.var(fName)))
+        prod = ROOT.RooFormulaVar(pdfNorm,"@0*@1", ROOT.RooArgList(self.w.var("shapeBkg_model_qcd_mjj_JJ_q0__norm"),self.w.var(fName)))
         getattr(self.w,'import')(prod,ROOT.RooFit.Rename(pdfNorm))
         self.contributions.append({'name':name,'pdf':pdfName,'ID':ID,'yield':1.0})
 

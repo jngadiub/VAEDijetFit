@@ -42,8 +42,8 @@ def get_generated_events(filename):
 def makeData(options, dataFile, q, iq, quantiles, hdata, minMJJ=0, maxMJJ=1e+04):
  
    file = h5py.File(options.inputDir+"/"+dataFile,'r')
-   sel_key_q = 'sel_q70' if q == 'q100' else 'sel_' + q # selection column for quantile q (use rejected events of q70 for q100)
-   print "Current quantile file: %s, reading quantile %s" % (file, sel_key_q)
+   sel_key_q = 'sel_q30' if q == 'q0' else 'sel_' + q # selection column for quantile q (use rejected events of q70 for q100)
+   print "Current quantile file: %s, reading quantile between %s and %s" % (file, q, sel_key_q)
 
    data = file['eventFeatures'][()] 
    mjj_idx = np.where(file['eventFeatureNames'][()] == 'mJJ')[0][0]
@@ -56,15 +56,15 @@ def makeData(options, dataFile, q, iq, quantiles, hdata, minMJJ=0, maxMJJ=1e+04)
    # else, if quantile = real quantile, fill with orthogonal data
    sel_idx = np.where(file['eventFeatureNames'][()] == sel_key_q)[0][0] # 0=rejected 1=accepted
  
-   if q=='q05':
+   if q=='q90':
     for e in range(data.shape[0]):
      if data[e][sel_idx]==1: hdata.Fill(data[e][mjj_idx])
-   elif q=='q100': #if 70% quantile is rejected then events are in the 100-70% slice
+   elif q=='q0': #if 30% quantile is rejected then events are in the 0-30% less anomalous slice
     for e in range(data.shape[0]):
      if data[e][sel_idx]==0: hdata.Fill(data[e][mjj_idx]) 
    else: 
-     print ".... checking orthogonality wrt",quantiles[iq-1],"quantile...."
-     sel_key_iq = 'sel_' + quantiles[iq-1] # selection column for quantile q
+     print ".... checking orthogonality wrt",quantiles[iq+1],"quantile...."
+     sel_key_iq = 'sel_' + quantiles[iq+1] # selection column for quantile q -- ex: if q=q30 it must reject q50 and accept q30
      sel_idx_iq = np.where(file['eventFeatureNames'][()] == sel_key_iq)[0][0] # 0=rejected 1=accepted
      for e in range(data.shape[0]):
       if data[e][sel_idx_iq]==0 and data[e][sel_idx]==1: hdata.Fill(data[e][mjj_idx])
@@ -102,17 +102,16 @@ if __name__ == "__main__":
    sig_res = options.sig_res
    out_dir = options.out_dir
    prepare_output_directory(out_dir, False)
-   #binsx = [1126,1181,1246,1313,1383,1455,1530,1607,1687,1770,1856,1945,2037,2132,2231,2332,2438,2546,2659,2775,2895,3019,3147,3279,3416,3558,3704,3854,4010,4171,4337,4509,4686,4869,5058,5253,5500,5663,5877,6099,6328,6564,6808]
-   #Current files have upper cut at 6100 (to be removed)
-   binsx = [1455,1530,1607,1687,1770,1856,1945,2037,2132,2231,2332,2438,2546,2659,2775,2895,3019,3147,3279,3416,3558,3704,3854,4010,4171,4337,4509,4686,4869,5058,5253,5500,5663,5877,6100]
-   shift = 1200 - binsx[0] # shift to mjj cut ???
- 
-   shift = 0
-   binsx = [e+shift for e in binsx]
+   binsx = [1200,1246,1313,1383,1455,1530,1607,1687,1770,1856,1945,2037,2132,2231,2332,2438,2546,2659,2775,2895,3019,3147,3279,3416,3558,3704,3854,4010,4171,4337,4509,4686,4869,5058,5253,5500,5663,5877,6099,6328,6564,6808]   #Current files have upper cut at 6100 (to be removed) 
+
+   binsx = [e for e in binsx]
    roobins = ROOT.RooBinning(len(binsx)-1, array('d',binsx), "mjjbins")
    bins_fine = int(binsx[-1]-binsx[0])
-   quantiles = ['q05', 'q10', 'q30', 'q50', 'q70', 'q100', 'total']
-   fractions = [0.05/0.30,0.05/0.30,0.20/0.30,0.20/0.30,0.20/0.30,1]
+   #quantiles = ['q05', 'q10', 'q30', 'q50', 'q70', 'q100', 'total'] # For CASE -- most anomalous is q05
+   quantiles = ['q0', 'q30', 'q50', 'q70', 'q90', 'total'] #Delphes inverted wrt CASE -- most anomalous is q90
+
+   #fractions = [0.05/0.30, 0.05/0.30, 0.20/0.30, 0.20/0.30, 0.20/0.30, 1] # for CASE
+   fractions = [1, 0.20/0.30, 0.20/0.30, 0.20/0.30, 0.10/0.30]
 
    # change signal fit intervall according to resonance width
    if sig_res == "na":
@@ -124,7 +123,14 @@ if __name__ == "__main__":
    large_bins_sig_fit = array('f',truncate(binsx,*sig_mjj_limits))
    roobins_sig_fit = ROOT.RooBinning(len(large_bins_sig_fit)-1, array('d',large_bins_sig_fit), "mjjbins_sig")
    print " &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&  "
-   sig_xsec = 1.*options.xsec # metric is 1 [pb] = 1000 [fb] assumed when generating signal samples --> the xsec option is a scaling of that
+   
+   qcd_xsec = 8.73e6 # [fb]
+   qcd_gen_events = get_generated_events(options.qcdFile) # all SR data used
+   lumi = qcd_gen_events/qcd_xsec # qcd SR lumi 51 --> seems like 38 inv fb ?
+   sig_gen_events = get_generated_events(options.sigFile) # this is needed
+   # signal events to be injected must be lumi*xsec_injected*N_selected/N_generated --> NOW: if xsec_injected is 100 fb and lumi is in inverse fb we are good --> so then the injected sig_xsec must be 100 for options.xsec 0.1
+   sig_xsec = 1000.*options.xsec # metric is [fb] with options.xsec in pb
+ 
    print " sig_xsec ",sig_xsec
    print " &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&  "
    ################################### FIRST PREPARE DATA ###################################
@@ -147,7 +153,7 @@ if __name__ == "__main__":
          histos_sig.append( ROOT.TH1F("mjj_sig_%s"%q,"mjj_sig_%s"%q,len(bins_sig_fit)-1,bins_sig_fit) )
          print
          makeData(options,options.sigFile,q,iq,quantiles,histos_sig[-1],*sig_mjj_limits) #first fill orthogonal data histos
-         print "************ Found",histos_sig[-1].Integral(),"signal events for quantile",q
+         print "************ Found",histos_sig[-1].GetEntries(),"signal events for quantile",q
          print
 
       #Background data preparation
@@ -182,8 +188,8 @@ if __name__ == "__main__":
          histos_qcd[-1].SetDirectory(ROOT.gROOT)
          q_datafile.Close()
         
-      for q,h in enumerate(histos_sig): print "************ Found",h.Integral(),"signal events for quantile",quantiles[q]
-      for q,h in enumerate(histos_qcd): print "************ Found",h.Integral(),"background events for quantile",quantiles[q]
+      for q,h in enumerate(histos_sig): print "************ Found",h.GetEntries(),"signal events for quantile",quantiles[q]
+      for q,h in enumerate(histos_qcd): print "************ Found",h.GetEntries(),"background events for quantile",quantiles[q]
 
    sum_n_histos_qcd = sum([h.GetEntries() for h in histos_qcd[:-1]])
    sum_n_histos_sig = sum([h.GetEntries() for h in histos_sig[:-1]])
@@ -193,7 +199,7 @@ if __name__ == "__main__":
    print "TOTAL BACKGROUND EVENTS",histos_qcd[-1].GetEntries(), " (sum histos = )", sum_n_histos_qcd
    print
    print "************************************************************************************** "
-
+   
    ################################### NOW MAKE THE FITS ###################################
    '''
     for each quantile:
@@ -549,18 +555,17 @@ if __name__ == "__main__":
 
    cmdCombine = 'cd {out_dir} && combineCards.py '.format(out_dir=out_dir)
 
-   #quantiles = ['q05', 'q10', 'q30', 'q50', 'q70', 'q100', 'total']
-   #nPars_QCD=[2, 2, 2, 2, 2, 2, 2]
-   #qcd_fname = ['2par_qcd_fit0_quantileq05.root', '2par_qcd_fit0_quantileq10.root', '2par_qcd_fit0_quantileq30.root', '2par_qcd_fit0_quantileq50.root', '2par_qcd_fit0_quantileq70.root', '2par_qcd_fit0_quantileq100.root', '2par_qcd_fit0_quantiletotal.root']
-   #dcb=True
-   #fractions = [0.05/0.30,0.05/0.30,0.20/0.30,0.20/0.30,0.20/0.30,1]
-   # Setting number of parameters to be equal to the background enriched region --> to be changed: implement partial correlation if N parameters different
+    # Setting the function of quantiles to be equal to the background enriched region --> to be changed: implement partial correlation if N parameters different
+   print(qcd_fname)
+   print(nPars_QCD)
    if options.correlateB == True:
       for i,p in enumerate(nPars_QCD):
-         if p != nPars_QCD[len(quantiles)-2]:
-            nPars_QCD[i] = nPars_QCD[len(quantiles)-2]
-            qcd_fname[i] = qcd_fname[i].replace( qcd_fname[i].split("_")[0], "%i_par"%nPars_QCD[len(quantiles)-2], qcd_fname[i].split("_")[2], qcd_fname[len(quantiles)-2].split("_")[2] )
+         if p != nPars_QCD[0]:
+            print("JENNIFER",qcd_fname[i], qcd_fname[0].split("_")[-1],qcd_fname[i].split("_")[-1])
+            qcd_fname[i] =  qcd_fname[0].replace( qcd_fname[0].split("_")[-1], qcd_fname[i].split("_")[-1])
+            print("AFTER",qcd_fname[i])
 
+   print(qcd_fname)
    for iq,q in enumerate(quantiles):  
    
       if q == 'total': continue
@@ -576,13 +581,12 @@ if __name__ == "__main__":
       card.addSystematic("CMS_res_j","param",[0.0,0.08]) 
 
       if options.correlateB == True:
-         #TAKE BACKGROUND SHAPE COMES FROM BACKGROUND-ENRICHED QUANTILE SLICE --> WHICH ONE? TRY THE Q100 SLICE!
+         #TAKE BACKGROUND SHAPE COMES FROM BACKGROUND-ENRICHED QUANTILE SLICE --> WHICH ONE? TRY THE Q0 SLICE!
          print "============================== IMPLEMENTING FULL CORRELATION AMONG CATEGORIES !!!"
-         card.addQCDShapeNoTag('model_qcd_mjj','mjj', os.path.join(out_dir, qcd_fname[len(quantiles)-2]), nPars_QCD[len(quantiles)-2])
+         card.addQCDShapeNoTag('model_qcd_mjj','mjj', os.path.join(out_dir, qcd_fname[0]), nPars_QCD[0])
          card.addFloatingYieldCorr('model_qcd_mjj',1, os.path.join(out_dir, qcd_fname[iq]), "mjj_qcd_%s"%q,fractions[iq]) #JEN CHANGE BACK TO: histos_qcd[iq].GetName()
-         for i in range(1,nPars_QCD[len(quantiles)-2]+1): card.addSystematic("CMS_JJ_p%i"%i,"flatParam",[])
-         #card.addSystematic("model_qcd_mjj_JJ_q100_4combo_norm","flatParam",[]) ##not sure the name of this parameter is correct
-         card.addSystematic("shapeBkg_model_qcd_mjj_JJ_q100__norm","flatParam",[])
+         for i in range(1,nPars_QCD[0]+1): card.addSystematic("CMS_JJ_p%i"%i,"flatParam",[])
+         card.addSystematic("shapeBkg_model_qcd_mjj_JJ_q0__norm","flatParam",[])
       else:   
          card.addQCDShape('model_qcd_mjj','mjj', os.path.join(out_dir, qcd_fname[iq]), nPars_QCD[iq])
          card.addFloatingYield('model_qcd_mjj',1, os.path.join(out_dir, qcd_fname[iq]), histos_qcd[iq].GetName())
@@ -603,13 +607,12 @@ if __name__ == "__main__":
    d = open(os.path.join(out_dir, 'datacard_tmp.txt'),'w')
    dorig = open('{out_dir}/datacard_{xsec}_final.txt'.format(out_dir=out_dir, xsec=sig_xsec),'r')
    for l in dorig.readlines(): d.write(l)
-   #if options.correlateB == True:
-   #   d.write('JJ_q100_rate     rateParam       JJ_q100 model_qcd_mjj   1\n')
-   #   d.write('JJ_q70_rate      rateParam       JJ_q70  model_qcd_mjj   (0.20*@0)/0.30  JJ_q100_rate\n')
-   #   d.write('JJ_q50_rate      rateParam       JJ_q50  model_qcd_mjj   (0.20*@0)/0.30  JJ_q100_rate\n')
-   #   d.write('JJ_q30_rate      rateParam       JJ_q30  model_qcd_mjj   (0.20*@0)/0.30  JJ_q100_rate\n') 
-   #   d.write('JJ_q10_rate      rateParam       JJ_q10  model_qcd_mjj   (0.05*@0)/0.30  JJ_q100_rate\n')
-   #   d.write('JJ_q05_rate      rateParam       JJ_q05  model_qcd_mjj   (0.05*@0)/0.30  JJ_q100_rate\n')
+   if options.correlateB == True:
+      d.write('JJ_q0_rate     rateParam       JJ_q0 model_qcd_mjj   1\n')
+      d.write('JJ_q30_rate      rateParam       JJ_q30  model_qcd_mjj   (0.20*@0)/0.30  JJ_q0_rate\n')
+      d.write('JJ_q50_rate      rateParam       JJ_q50  model_qcd_mjj   (0.20*@0)/0.30  JJ_q0_rate\n')
+      d.write('JJ_q70_rate      rateParam       JJ_q70  model_qcd_mjj   (0.20*@0)/0.30  JJ_q0_rate\n') 
+      d.write('JJ_q90_rate      rateParam       JJ_q90  model_qcd_mjj   (0.10*@0)/0.30  JJ_q0_rate\n')
    d.close()
    dorig.close()
    if options.run_combine == True:
@@ -633,4 +636,4 @@ if __name__ == "__main__":
 
    for iq,q in enumerate(quantiles): 
       if q == 'total': continue
-      checkSBFitFinal(out_dir+'/workspace_{xsec}_{label}.root'.format(xsec=options.xsec,label='final'),q,roobins,'M{mass}_xsec{xsec}_{q}_final.root'.format(mass=mass,xsec=sig_xsec,q=q),2,out_dir)
+      checkSBFitFinal(out_dir+'/workspace_{xsec}_{label}.root'.format(xsec=sig_xsec,label='final'),q,roobins,'M{mass}_xsec{xsec}_{q}_final.root'.format(mass=mass,xsec=sig_xsec,q=q),2,out_dir)
