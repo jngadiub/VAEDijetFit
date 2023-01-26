@@ -1,4 +1,6 @@
-cd /afs/cern.ch/user/k/kiwoznia/CMSSW_10_2_3/src
+#cd /afs/cern.ch/user/k/kiwoznia/CMSSW_10_2_3/src
+cd /afs/cern.ch/user/k/kiwoznia/CMSSW_11_1_2/src
+source /cvmfs/cms.cern.ch/cmsset_default.sh
 eval `scramv1 runtime -sh`
 #cmsenv
 export PYTHONPATH=
