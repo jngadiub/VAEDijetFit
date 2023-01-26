@@ -578,6 +578,9 @@ def checkSBFit(filename,label,roobins,plotname, nPars, plot_dir):
 
 
 def f_test(nParams, nDof, chi2, thresh = 0.05):
+    if len(nParams) == 1:
+      print('only one parameter setting for background fit provided. Not running f-test. Returning the only parameter')
+      return 0
     #assumes arrays are in increasing number of params order (ie nParams[0] is minimum number of params)
     print  "\n\n #################### STARTING F TEST #######################" 
     best_i = 0
