@@ -509,7 +509,7 @@ if __name__ == "__main__":
       ### !!! compute amount of signal to be injected 
            
       if sig_xsec==0: constant = 0.001 #1.0 # might give too large yields for combine to converge ???
-      else: constant = 1.0  #scaling factor to signal histo integral used by addFixedYieldFromFile --> should return r=1 in FitDiagnostics
+      else: constant = sig_xsec*lumi/sig_gen_events  #scaling factor to signal histo integral used by addFixedYieldFromFile --> should return r=1 in FitDiagnostics
       print " constant = scaling factor to signal integral generated with 1 pb = 1000 fb xsec = ",constant
       # add signal pdf from model_s, taking integral number of events with constant scaling factor for sig
       card.addFixedYieldFromFile('model_signal_mjj',0, os.path.join(out_dir, 'sig_fit_%s.root'%q), histos_sig[iq].GetName(), constant=constant)
@@ -575,7 +575,7 @@ if __name__ == "__main__":
       if dcb: card.addSignalShapeDCB('model_signal_mjj','mjj', os.path.join(out_dir, 'sig_fit_%s.root'%q), {'CMS_scale_j':1.0},{'CMS_res_j':1.0})
       else: card.addSignalShape('model_signal_mjj','mjj', os.path.join(out_dir, 'sig_fit_%s.root'%q), {'CMS_scale_j':1.0},{'CMS_res_j':1.0})
       if sig_xsec==0: constant = 0.001 #1.0 # might give too large yields for combine to converge ???
-      else: constant = 1.0  #scaling factor to signal histo integral used by addFixedYieldFromFile --> should return r=1 in FitDiagnostics
+      else: constant = sig_xsec*lumi/sig_gen_events  #scaling factor to signal histo integral used by addFixedYieldFromFile --> should return r=1 in FitDiagnostics
       card.addFixedYieldFromFile('model_signal_mjj',0, os.path.join(out_dir, 'sig_fit_%s.root'%q), "mjj_sig_%s"%q, constant=constant) #JEN CHANGE BACK TO: histos_sig[iq].GetName()
       card.addSystematic("CMS_scale_j","param",[0.0,0.012])
       card.addSystematic("CMS_res_j","param",[0.0,0.08]) 
