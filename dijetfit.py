@@ -17,6 +17,7 @@ ROOT.RooRandom.randomGenerator().SetSeed(random.randint(0, 1e+6))
 from Fitter import Fitter
 from DataCardMaker import DataCardMaker
 from Utils import *
+import string_constants as strc
  
 # python dijetfit.py -M 3000 -i vqr_lmfit_csv/ --qcd bkg.h5 --sig XToYYprimeTo4Q_MX3000_MY400_MYprime170_narrowReco.h5 -o vqr_lmfit_csv/ --xsec 1
 
@@ -84,7 +85,7 @@ if __name__ == "__main__":
 
    #some configuration
    parser = optparse.OptionParser()
-   parser.add_option("--xsec","--xsec",dest="xsec",type=float,default=0.0006,help="Injected signal cross section in pb")
+   parser.add_option("--xsec","--xsec",dest="xsec",type=float,default=0.0006,help="Injected signal cross section in fb")
    parser.add_option("-M","-M",dest="mass",type=float,default=3500.,help="Injected signal mass")
    parser.add_option("-i","--inputDir",dest="inputDir",default='./',help="directory with all quantiles h5 files")
    parser.add_option("--qcd","--qcd",dest="qcdFile",default='qcd.h5',help="QCD h5 file")
@@ -125,11 +126,10 @@ if __name__ == "__main__":
    print " &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&  "
    
    qcd_xsec = 8.73e6 # [fb]
-   qcd_gen_events = get_generated_events(options.qcdFile) # all SR data used
-   lumi = qcd_gen_events/qcd_xsec # qcd SR lumi 51 --> seems like 38 inv fb ?
-   sig_gen_events = get_generated_events(options.sigFile) # this is needed
-   # signal events to be injected must be lumi*xsec_injected*N_selected/N_generated --> NOW: if xsec_injected is 100 fb and lumi is in inverse fb we are good --> so then the injected sig_xsec must be 100 for options.xsec 0.1
-   sig_xsec = 1000.*options.xsec # metric is [fb] with options.xsec in pb
+   qcd_gen_events = strc.get_gen_events('qcdAll')
+   lumi = qcd_gen_events/qcd_xsec # lumi is ~ 64/fb
+   sig_gen_events = strc.get_gen_events(options.sigFile.replace('Reco.h5',''))
+   sig_xsec = options.xsec # unit is [fb]
  
    print " sig_xsec ",sig_xsec
    print " &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&  "
@@ -466,11 +466,11 @@ if __name__ == "__main__":
       print
 
       # signal xsec set to 0 by default, so hdatasig hist not filled !
-      if sig_xsec != 0:
-         print "Generate histos_sig[iq].Integral() ",histos_sig[iq].Integral()," * sig_xsec",sig_xsec," = ",int(histos_sig[iq].Integral()*sig_xsec),"signal events from model_s"  # histo integral already takes into account efficiency, lumi, and 1 pb xsec
-         num_sig_evts = int(histos_sig[iq].Integral()*sig_xsec)
+      if sig_xsec != 0:     
+         num_sig_evts = int(histos_sig[iq].Integral()*sig_xsec*lumi/sig_gen_events) # histo integral already takes into account efficiency, lumi, and 1 pb xsec
+         print "Generate", num_sig_evts, "signal events!" 
          if num_sig_evts > 0:
-            datasig = model_s.generateBinned(ROOT.RooArgSet(mjj),int(histos_sig[iq].Integral()*sig_xsec))
+            datasig = model_s.generateBinned(ROOT.RooArgSet(mjj),num_sig_evts)
             hdatasig = datasig.createHistogram("mjj_fine")
          else:
             hdatasig = ROOT.TH1F("mjj_generate_sig_%s"%q,"mjj_generate_sig_%s"%q,histos_qcd[iq].GetNbinsX(),histos_qcd[iq].GetXaxis().GetXmin(),histos_qcd[iq].GetXaxis().GetXmax())
@@ -509,7 +509,7 @@ if __name__ == "__main__":
       ### !!! compute amount of signal to be injected 
            
       if sig_xsec==0: constant = 0.001 #1.0 # might give too large yields for combine to converge ???
-      else: constant = sig_xsec  #scaling factor to signal histo integral used by addFixedYieldFromFile --> should return r=1 in FitDiagnostics
+      else: constant = sig_xsec*lumi/sig_gen_events  #scaling factor to signal histo integral used by addFixedYieldFromFile --> should return r=1 in FitDiagnostics
       print " constant = scaling factor to signal integral generated with 1 pb = 1000 fb xsec = ",constant
       # add signal pdf from model_s, taking integral number of events with constant scaling factor for sig
       card.addFixedYieldFromFile('model_signal_mjj',0, os.path.join(out_dir, 'sig_fit_%s.root'%q), histos_sig[iq].GetName(), constant=constant)
@@ -575,7 +575,7 @@ if __name__ == "__main__":
       if dcb: card.addSignalShapeDCB('model_signal_mjj','mjj', os.path.join(out_dir, 'sig_fit_%s.root'%q), {'CMS_scale_j':1.0},{'CMS_res_j':1.0})
       else: card.addSignalShape('model_signal_mjj','mjj', os.path.join(out_dir, 'sig_fit_%s.root'%q), {'CMS_scale_j':1.0},{'CMS_res_j':1.0})
       if sig_xsec==0: constant = 0.001 #1.0 # might give too large yields for combine to converge ???
-      else: constant = sig_xsec  #scaling factor to signal histo integral used by addFixedYieldFromFile --> should return r=1 in FitDiagnostics
+      else: constant = sig_xsec*lumi/sig_gen_events  #scaling factor to signal histo integral used by addFixedYieldFromFile --> should return r=1 in FitDiagnostics
       card.addFixedYieldFromFile('model_signal_mjj',0, os.path.join(out_dir, 'sig_fit_%s.root'%q), "mjj_sig_%s"%q, constant=constant) #JEN CHANGE BACK TO: histos_sig[iq].GetName()
       card.addSystematic("CMS_scale_j","param",[0.0,0.012])
       card.addSystematic("CMS_res_j","param",[0.0,0.08]) 
