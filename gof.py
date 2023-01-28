@@ -1,5 +1,5 @@
 import ROOT as rt
-import os, optparse
+import os, sys, optparse
 import numpy as np
 import uproot
 import tdrstyle
@@ -7,15 +7,18 @@ tdrstyle.setTDRStyle()
 rt.gROOT.SetBatch(True)
 rt.gStyle.SetOptStat(0)
 rt.gStyle.SetOptTitle(0)
+import logging
+
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 lumi = 64
-bin_edges = np.array([1200,1246,1313,1383,1455,1530,1607,1687,
-                      1770,1856,1945,2037,2132,2231,2332,2438,
-                      2546,2659,2775,2895,3019,3147,3279,3416,
-                      3558,3704,3854,4010,4171,4337,4509,4686,
-                      4869,5058,5253,5500,5663,5877,6099,6328,6564,6808]).astype('float') 
+# bin_edges = np.array([1200,1246,1313,1383,1455,1530,1607,1687,
+#                       1770,1856,1945,2037,2132,2231,2332,2438,
+#                       2546,2659,2775,2895,3019,3147,3279,3416,
+#                       3558,3704,3854,4010,4171,4337,4509,4686,
+#                       4869,5058,5253,5500,5663,5877,6099,6328,6564,6808]).astype('float') 
 
-bin_edges = np.array([1313,1383,1455,1530,1607,1687,
+bin_edges = np.array([1313,1383,1455,1530,1607,1687, # Reduced range to avoid turn-on
                       1770,1856,1945,2037,2132,2231,2332,2438,
                       2546,2659,2775,2895,3019,3147,3279,3416,
                       3558,3704,3854,4010,4171,4337,4509,4686,
@@ -30,7 +33,7 @@ bws = (max_bin-min_bin)/n_bins
 col = ['#66c2a5','#fc8d62','#8da0cb','#e78ac3','#a6d854','#ffd92f'] *3
 col.reverse()
 
-def load_data(indir,quantiles):
+def load_data(indir,quantiles): # TODO! This is currently just opening the QCD file as if it was data with already signal injected (which is what Benedikt has). For Kingas setup, this signal needs to be scaled and injected.
 
     histos_sig = {}
     histos_qcd = {}
@@ -352,7 +355,7 @@ def runFitDiagnosis(datacard, quantile, cats=['rej', 'acc']):
     f.SetLogy()
     f.Draw()
     f.SaveAs("fitResults_{}.pdf".format(quantile))
-    print("By hand obs GOF = {}".format(byhand_gof))
+    logging.info("By hand obs GOF = {}".format(byhand_gof))
 
 def runCombine(quantile,datacarddir):
 
@@ -365,9 +368,9 @@ def runCombine(quantile,datacarddir):
     
     if options.runToys:
 
-        toys_per_job = int(options.ntoys)/2
+        toys_per_job = int(options.ntoys)/5
         print("Running %s toys with 5 different seeds!"%toys_per_job)
-        for i in range(2):
+        for i in range(5):
             os.system('combine -M GoodnessOfFit --algo saturated --fixedSignalStrength 0 -d {DATACARD}  -t {NTOYS} --toysFreq -n gof_toys_{Q}  --dataset data_obs -s {S} -v 0'.format(DATACARD=cardname, Q=quantile, NTOYS=toys_per_job,S=40+i))
         os.system('hadd -f higgsCombinegof_toys_{Q}.GoodnessOfFit.mH120.ALLTOYS.root higgsCombinegof_toys_{Q}.GoodnessOfFit.mH120.4*.root'.format(Q=quantile))
     
@@ -375,8 +378,9 @@ def runCombine(quantile,datacarddir):
         obs_gof = obs_gof_file['limit'].arrays('limit')['limit'][0]
         exp_gof_file = uproot.open('higgsCombinegof_toys_{Q}.GoodnessOfFit.mH120.ALLTOYS.root'.format(Q=quantile))
         exp_gof = exp_gof_file['limit'].arrays('limit')['limit']
-        print("Obs.   {:.1f}".format(obs_gof))
-        print("Exp.   {:.1f}\n".format(np.mean(exp_gof)))   
+        logging.info('Observed versus e-expected GOF test statistics for quantile ', q) 
+        logging.info("Obs.   {:.1f}".format(obs_gof))
+        logging.info("Exp.   {:.1f}\n".format(np.mean(exp_gof)))   
         runFitDiagnosis(cardname, quantile)
         plotGOF(obs_gof,exp_gof,q)
 
@@ -402,7 +406,7 @@ def runCombination(datacarddir, qacc=['q30', 'q50', 'q70', 'q90']):
   print("Combining:", command)
 
   os.system(command)
-  os.system('combine -M GoodnessOfFit --algo saturated --fixedSignalStrength 0 -d {CCARD} -n gof_combined --dataset data_obs -v 3'.format(CCARD=combined_card_name))
+  os.system('combine -M GoodnessOfFit --algo saturated --fixedSignalStrength 0 -d {CCARD} -n gof_combined --dataset data_obs -v 0'.format(CCARD=combined_card_name))
   
   if options.runToys:
     toys_per_job = int(options.ntoys)/5
@@ -414,19 +418,16 @@ def runCombination(datacarddir, qacc=['q30', 'q50', 'q70', 'q90']):
     obs_gof = obs_gof_file['limit'].arrays('limit')['limit'][0]
     exp_gof_file = uproot.open('higgsCombinegof_toys_combined.GoodnessOfFit.mH120.ALLTOYS.root')
     exp_gof = exp_gof_file['limit'].arrays('limit')['limit']
-    print("Obs.   {:.1f}".format(obs_gof))
-    print("Exp.   {:.1f}\n".format(np.mean(exp_gof)))   
+    logging.info('Observed versus e-expected GOF test statistics for combination') 
+    logging.info("Obs.   {:.1f}".format(obs_gof))
+    logging.info("Exp.   {:.1f}\n".format(np.mean(exp_gof)))   
     runFitDiagnosis(combined_card_name, "COMBINED", cats=['rej','q30', 'q50', 'q70', 'q90'])
     plotGOF(obs_gof,exp_gof,"COMBINED", n_dof=n_bins*len(qacc))
   os.chdir(basedir)
  
 
-
 if __name__ == "__main__":
 
-   #python gof.py -i inputdir
-
-   #some configuration
    parser = optparse.OptionParser()
    parser.add_option("--xsec","--xsec",dest="xsec",type=float,default=0.0006,help="Injected signal cross section in fb")
    parser.add_option("-M","-M",dest="mass",type=float,default=3500.,help="Injected signal mass")
@@ -436,7 +437,6 @@ if __name__ == "__main__":
    parser.add_option('-T','--runToys',action='store_true', dest='runToys'  , default=False, help='runToys')
    parser.add_option('-C','--doCombination',action='store_true', dest='doCombination'  , default=False, help='do full combination')
    parser.add_option('-Q','--perQuantile',action='store_true', dest='doPerQuantile'  , default=False, help='do per quantile fit')
-
    (options,args) = parser.parse_args()
     
    mass = options.mass
@@ -445,16 +445,20 @@ if __name__ == "__main__":
    outdir = indir
 
    quantiles = ['q0', 'q30', 'q50', 'q70', 'q90', 'total'] #Delphes inverted wrt CASE -- most anomalous is q90
-   legends  = ['q = 0-30', 'q = 30-50', 'q = 50-70', 'q = 70-90', 'q = 90-100', 'Inclusive'] #Delphes inverted wrt CASE -- most anomalous is q90
-
+   legends  = ['q = 0-30', 'q = 30-50', 'q = 50-70', 'q = 70-90', 'q = 90-100', 'Inclusive'] 
+   
+   logging.info("Loading data and plotting ratios")
    histos_sig, histos_qcd = load_data(indir,quantiles)
    make_ratio_plots(histos_sig, histos_qcd, quantiles, indir, mass, options.xsec, options.sig_res, legends)
    
+   logging.info("Making workspaces and running per-quantile fits")
    for q in quantiles:
     if q not in ['q0','total']:
-        print("Making workspaces for {}".format(q))
-        # makeWS(histos_qcd['q0'], histos_qcd[q], histos_sig['q0'], histos_sig[q], outdir, q)
-        # runCombine(q,outdir)
-
+        makeWS(histos_qcd['q0'], histos_qcd[q], histos_sig['q0'], histos_sig[q], outdir, q)
+        runCombine(q,outdir)
+    
    if options.doCombination:
-      runCombination(datacarddir=outdir, qacc=['q30', 'q50', 'q70', 'q90'])
+    logging.info("Running full combination")
+    runCombination(datacarddir=outdir, qacc=['q30', 'q50', 'q70', 'q90'])
+
+   logging.info("Done! Find your results in ", outdir)
