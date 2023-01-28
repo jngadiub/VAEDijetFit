@@ -466,7 +466,7 @@ if __name__ == "__main__":
       print
 
       # signal xsec set to 0 by default, so hdatasig hist not filled !
-      if sig_xsec != 0:     
+      if sig_xsec != 0:
          print "Generate histos_sig[iq].Integral() ",histos_sig[iq].Integral()," * sig_xsec",sig_xsec," = ",int(histos_sig[iq].Integral()*sig_xsec),"signal events from model_s"  # histo integral already takes into account efficiency, lumi, and 1 pb xsec
          num_sig_evts = int(histos_sig[iq].Integral()*sig_xsec)
          if num_sig_evts > 0:
