@@ -111,16 +111,15 @@ def plotPValue(xsec_scan, quantiles, labels, plot_name_suffix='', out_dir=''):
 
 if __name__ == "__main__":
 
-    #python run_dijetfit.py --run -i /eos/user/k/kiwoznia/data/QR_results/events/qr_run_6160/env_run_0/poly_run_0/ --sig GtoWW35naReco.h5 --qcd qcdSigAll.h5 --xsec 100 -M 3500 --res na -C
+    #python run_dijetfit.py -i /eos/user/k/kiwoznia/data/QR_results/events/qr_run_6160/env_run_0/poly_run_0/ --sig GtoWW35naReco.h5 --qcd qcdSigAll.h5 --xsec 100 -M 3500 --res na -C
 
     parser = optparse.OptionParser()
-    parser.add_option("--run","--run", dest="run", default=False, action="store_true", help="Run scan")
-    parser.add_option("-n","-n",dest="run_n", type=int, default=0, help="Experiment number")
+    parser.add_option("--plot", dest="plot", default=False, action="store_true", help="Plot only (no scan)")
     parser.add_option("-M","-M", dest="mass", type=float, default=3500., help="Injected signal mass")
     parser.add_option("-i","--inputDir",dest="inputDir", default='./', help="directory with all quantiles h5 files")
     parser.add_option("--qcd","--qcd", dest="qcdFile", default='qcd.h5', help="QCD h5 file")
     parser.add_option("--sig","--sig", dest="sigFile", default='signal.h5', help="Signal h5 file")
-    parser.add_option("-xsec", "--sigxsec", dest="sigXsec", default=100, help="true signal cross-section")
+    parser.add_option("--xsec", "--sigxsec", dest="sigXsec", default=100, help="true signal cross-section")
     parser.add_option("--res", "--res", dest="sigRes", type="choice", choices=("na", "br"), default="na", help="resonance type: narrow [na] or broad [br]")
     parser.add_option('-C', dest="correlateB",action="store_true",help="Coorelate background shape among quantiles")
     (options,args) = parser.parse_args()
@@ -148,7 +147,7 @@ if __name__ == "__main__":
     labels = ['q:0-5%','q:5-10%','q:10-30%','q:30-50%','q:50-70%','q:70-100%','bump hunt']
 
     #if you have already run the scan, results are saved in txt files 
-    if run == 0:
+    if options.plot:
         plotPValue(xsec, quantiles + ['final'], labels + ['AD bump hunt'], run_str, out_dir=out_dir)
         print("NOT CHECK OUTPUT FOLDER",out_dir)
         sys.exit()
