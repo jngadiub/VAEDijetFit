@@ -119,7 +119,7 @@ if __name__ == "__main__":
     parser.add_option("-i","--inputDir",dest="inputDir", default='./', help="directory with all quantiles h5 files")
     parser.add_option("--qcd","--qcd", dest="qcdFile", default='qcd.h5', help="QCD h5 file")
     parser.add_option("--sig","--sig", dest="sigFile", default='signal.h5', help="Signal h5 file")
-    parser.add_option("-x", "--sigxsec", dest="sigXsec", default=10, help="true signal cross-section")
+    parser.add_option("-x", "--sigxsec", dest="sigXsec", default=100, help="true signal cross-section")
     parser.add_option("--res", "--res", dest="sigRes", type="choice", choices=("na", "br"), default="na", help="resonance type: narrow [na] or broad [br]")
     parser.add_option("-l", "--loss", dest="lossId", type=str, default="rk5_10", help="loss combination strategy")
     (options,args) = parser.parse_args()
@@ -130,7 +130,7 @@ if __name__ == "__main__":
     qcdFile = options.qcdFile
     inputDir = options.inputDir
     sigRes = options.sigRes
-    xsec = np.array(get_xsec_scan(options.sigFile)) # pb
+    xsec = np.array(get_xsec_scan_from_injection(options.sigXsec)) # pb
 
     # distinctive run string
     run_str = make_run_str(sig_name=options.sigFile, sig_xsec=options.sigXsec, run_n=options.run_n, loss_id=options.lossId)
