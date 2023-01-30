@@ -119,12 +119,11 @@ if __name__ == "__main__":
     parser.add_option("-i","--inputDir",dest="inputDir", default='./', help="directory with all quantiles h5 files")
     parser.add_option("--qcd","--qcd", dest="qcdFile", default='qcd.h5', help="QCD h5 file")
     parser.add_option("--sig","--sig", dest="sigFile", default='signal.h5', help="Signal h5 file")
-    parser.add_option("--xsec", "--sigxsec", dest="sigXsec", default=100, help="true signal cross-section")
+    parser.add_option("--xsec", "--sigxsec", type=int, dest="sigXsec", default=100, help="true signal cross-section")
     parser.add_option("--res", "--res", dest="sigRes", type="choice", choices=("na", "br"), default="na", help="resonance type: narrow [na] or broad [br]")
     parser.add_option('-C', dest="correlateB",action="store_true",help="Coorelate background shape among quantiles")
     (options,args) = parser.parse_args()
 
-    run = options.run
     mass = options.mass
     sigFile = options.sigFile
     qcdFile = options.qcdFile
@@ -134,7 +133,7 @@ if __name__ == "__main__":
     xsec = np.array(get_xsec_scan_from_injection(options.sigXsec)) # pb
 
     # distinctive run string
-    run_str = make_run_str(sig_name=options.sigFile, sig_xsec=options.sigXsec, run_n=qr_run)
+    run_str = make_run_str(sig_name=options.sigFile, sig_xsec=options.sigXsec, qr_run_n=qr_run)
     out_dir = run_str[1:]
     os.system('mkdir %s'%out_dir)
     print(run_str[1:])

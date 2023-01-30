@@ -45,7 +45,7 @@ def make_run_str(sig_name, sig_xsec=10, qr_run_n=0):
 
 
 def get_xsec_scan_from_injection(xsec_in_training):
-  return list(range(10,xsec_in_training+1,10))
+  return list(range(0,xsec_in_training+1,10))
 
 def get_xsec_scan(filename):
 
