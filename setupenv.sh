@@ -8,3 +8,8 @@ export PYTHONPATH=
 export PYTHON27PATH=$PYTHON27PATH:/afs/cern.ch/user/k/kiwoznia/.local/lib/python2.7/site-packages
 cd -
 
+########################################################################################
+
+# for the GOF test run 
+# source /cvmfs/sft.cern.ch/lcg/views/LCG_98python3/x86_64-centos7-gcc10-opt/setup.sh
+#

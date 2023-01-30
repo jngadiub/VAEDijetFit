@@ -40,8 +40,8 @@ def get_canvas(cname):
 
     return canvas
     
-def make_run_str(sig_name, sig_xsec=10, run_n=0, loss_id='rk5'):
-    return '_' + sig_name[:-3] + '_xsec' + str(sig_xsec) + '_run' + str(run_n) + '_loss_' + loss_id 
+def make_run_str(sig_name, sig_xsec=10, qr_run_n=0):
+    return '_' + sig_name[:-3] + '_xsec' + str(sig_xsec) + '_qr' + str(qr_run_n)
 
 
 def get_xsec_scan_from_injection(xsec_in_training):

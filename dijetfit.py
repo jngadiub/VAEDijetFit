@@ -80,7 +80,7 @@ def prepare_output_directory(out_dir, clean_up=True):
     
 if __name__ == "__main__":
 
-   #python dijetfit.py -i inputdir --sig RSGraviton_WW_NARROW_13TeV_PU40_3.5TeV_parts/RSGraviton_WW_NARROW_13TeV_PU40_3.5TeV_reco.h5 --qcd qcd_sqrtshatTeV_13TeV_PU40_ALL_parts/qcd_sqrtshatTeV_13TeV_PU40_ALL_reco.h5
+   #python dijetfit.py -i /eos/user/k/kiwoznia/data/QR_results/events/qr_run_6160/env_run_0/poly_run_0/ --sig GtoWW35naReco.h5 --qcd qcdSigAll.h5 --xsec 100 -M 3500
    #python dijetfit.py -i inputdir --sig RSGraviton_WW_NARROW_13TeV_PU40_1.5TeV_parts/RSGraviton_WW_NARROW_13TeV_PU40_1.5TeV_reco.h5 --qcd qcd_sqrtshatTeV_13TeV_PU40_ALL_parts/qcd_sqrtshatTeV_13TeV_PU40_ALL_reco.h5 --xsec 0.0 -M 1500.0
 
    #some configuration
@@ -194,7 +194,6 @@ if __name__ == "__main__":
    sum_n_histos_qcd = sum([h.GetEntries() for h in histos_qcd[:-1]])
    sum_n_histos_sig = sum([h.GetEntries() for h in histos_sig[:-1]])
 
-   import ipdb; ipdb.set_trace()
    print "************************************************************************************** "
    print "TOTAL SIGNAL EVENTS",histos_sig[-1].GetEntries(), " (sum histos = )", sum_n_histos_sig
    print "TOTAL BACKGROUND EVENTS",histos_qcd[-1].GetEntries(), " (sum histos = )", sum_n_histos_qcd
@@ -469,8 +468,9 @@ if __name__ == "__main__":
       # signal xsec set to 0 by default, so hdatasig hist not filled !
       if sig_xsec != 0:
          # import ipdb; ipdb.set_trace()
-         num_sig_evts = int(histos_sig[iq].Integral()*sig_xsec*lumi/sig_gen_events) # histo integral already takes into account efficiency, lumi, and 1 pb xsec
-         total_generated_sig_events += num_sig_evts
+         num_sig_evts = int(histos_sig[iq].GetEntries()*sig_xsec*lumi/sig_gen_events) # histo integral already takes into account efficiency, lumi, and 1 pb xsec
+         if q != 'total': 
+            total_generated_sig_events += num_sig_evts
          print "Generate", num_sig_evts, "signal events!" 
          if num_sig_evts > 0:
             datasig = model_s.generateBinned(ROOT.RooArgSet(mjj),num_sig_evts)
@@ -546,8 +546,9 @@ if __name__ == "__main__":
       #run and visualize s+b fit as sanity check (sb_fit_mjj_qcd_q.root.pdf)
       checkSBFit('{out_dir}/workspace_JJ_{xsec}_{label}.root'.format(out_dir=out_dir, xsec=sig_xsec,label=q),q,roobins,histos_qcd[iq].GetName()+"_M{mass}_xsec{xsec}.root".format(mass=mass,xsec=sig_xsec), nPars_QCD[iq], out_dir)
       print " %%%%%%%%%%%%%%%%%%%%%%%% done with quantile ",q
-   print('&'*50+'\n'+'total number of generated signal events ' + str(total_generated_sig_events))
-   # import ipdb; ipdb.set_trace()
+   
+   # end of data-prep quantile loop
+   print('sum of generated signal events across all quantiles '+ str(total_generated_sig_events))
 
    print "------------------------------------------------- F-TEST result -------------------------------------------------"
    for iq,q in enumerate(quantiles):
