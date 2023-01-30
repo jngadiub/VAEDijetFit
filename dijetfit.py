@@ -194,6 +194,7 @@ if __name__ == "__main__":
    sum_n_histos_qcd = sum([h.GetEntries() for h in histos_qcd[:-1]])
    sum_n_histos_sig = sum([h.GetEntries() for h in histos_sig[:-1]])
 
+   import ipdb; ipdb.set_trace()
    print "************************************************************************************** "
    print "TOTAL SIGNAL EVENTS",histos_sig[-1].GetEntries(), " (sum histos = )", sum_n_histos_sig
    print "TOTAL BACKGROUND EVENTS",histos_qcd[-1].GetEntries(), " (sum histos = )", sum_n_histos_qcd
@@ -545,8 +546,8 @@ if __name__ == "__main__":
       #run and visualize s+b fit as sanity check (sb_fit_mjj_qcd_q.root.pdf)
       checkSBFit('{out_dir}/workspace_JJ_{xsec}_{label}.root'.format(out_dir=out_dir, xsec=sig_xsec,label=q),q,roobins,histos_qcd[iq].GetName()+"_M{mass}_xsec{xsec}.root".format(mass=mass,xsec=sig_xsec), nPars_QCD[iq], out_dir)
       print " %%%%%%%%%%%%%%%%%%%%%%%% done with quantile ",q
-   print('total number of generated signal events ' + str(total_generated_sig_events))
-   import ipdb; ipdb.set_trace()
+   print('&'*50+'\n'+'total number of generated signal events ' + str(total_generated_sig_events))
+   # import ipdb; ipdb.set_trace()
 
    print "------------------------------------------------- F-TEST result -------------------------------------------------"
    for iq,q in enumerate(quantiles):

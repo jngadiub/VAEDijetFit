@@ -11,7 +11,7 @@ import logging
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
-lumi = 64
+lumi = 63.95
 # bin_edges = np.array([1200,1246,1313,1383,1455,1530,1607,1687,
 #                       1770,1856,1945,2037,2132,2231,2332,2438,
 #                       2546,2659,2775,2895,3019,3147,3279,3416,
