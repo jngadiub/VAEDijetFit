@@ -43,6 +43,10 @@ def get_canvas(cname):
 def make_run_str(sig_name, sig_xsec=10, run_n=0, loss_id='rk5'):
     return '_' + sig_name[:-3] + '_xsec' + str(sig_xsec) + '_run' + str(run_n) + '_loss_' + loss_id 
 
+
+def get_xsec_scan_from_injection(xsec_in_training):
+  return list(range(10,xsec_in_training+1,10))
+
 def get_xsec_scan(filename):
 
     with open('files_count.json') as f:

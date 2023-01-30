@@ -136,7 +136,7 @@ if __name__ == "__main__":
    ################################### FIRST PREPARE DATA ###################################
    '''
     MAKE HISTOGRAMS:
-    for each quantile + 'bottom rejected' 10% + all events:
+    for each quantile + 'bottom rejected' 30% + all events:
       fill mjj histogram for 
       - signal: histos_sig
       - background: histos_qcd
@@ -208,7 +208,7 @@ if __name__ == "__main__":
       - chi2 ??
    ''' 
 
-   nParsToTry = [3] #[2, 3, 4]
+   nParsToTry = [2, 3, 4]
    best_i = [0]*len(quantiles)
    nPars_QCD = [0]*len(quantiles)
    qcd_fname = [0]*len(quantiles)
@@ -218,6 +218,7 @@ if __name__ == "__main__":
    qcd_fnames = [[""]*len(nParsToTry)]*len(quantiles)
    dcb = True #use Double Crystal Ball for signal templates
 
+   total_generated_sig_events = 0
    for iq,q in enumerate(quantiles):
       
       print "########## FIT SIGNAL AND SAVE PARAMETERS for quantile "+q+"    ############"
@@ -447,7 +448,6 @@ if __name__ == "__main__":
       print 
       print "############# INJECT SIGNAL DATA GENERATING FROM SIGNAL PDF for quantile "+q+" ###########"
       #QCD is taken from the histogram
-     
       f = ROOT.TFile("/tmp/%s/cache%i.root"%(commands.getoutput("whoami"),random.randint(0, 1e+6)),"RECREATE")
       f.cd()
       w=ROOT.RooWorkspace("w","w")
@@ -466,8 +466,10 @@ if __name__ == "__main__":
       print
 
       # signal xsec set to 0 by default, so hdatasig hist not filled !
-      if sig_xsec != 0:     
+      if sig_xsec != 0:
+         # import ipdb; ipdb.set_trace()
          num_sig_evts = int(histos_sig[iq].Integral()*sig_xsec*lumi/sig_gen_events) # histo integral already takes into account efficiency, lumi, and 1 pb xsec
+         total_generated_sig_events += num_sig_evts
          print "Generate", num_sig_evts, "signal events!" 
          if num_sig_evts > 0:
             datasig = model_s.generateBinned(ROOT.RooArgSet(mjj),num_sig_evts)
@@ -543,7 +545,9 @@ if __name__ == "__main__":
       #run and visualize s+b fit as sanity check (sb_fit_mjj_qcd_q.root.pdf)
       checkSBFit('{out_dir}/workspace_JJ_{xsec}_{label}.root'.format(out_dir=out_dir, xsec=sig_xsec,label=q),q,roobins,histos_qcd[iq].GetName()+"_M{mass}_xsec{xsec}.root".format(mass=mass,xsec=sig_xsec), nPars_QCD[iq], out_dir)
       print " %%%%%%%%%%%%%%%%%%%%%%%% done with quantile ",q
-   
+   print('total number of generated signal events ' + str(total_generated_sig_events))
+   import ipdb; ipdb.set_trace()
+
    print "------------------------------------------------- F-TEST result -------------------------------------------------"
    for iq,q in enumerate(quantiles):
       print " for quantile ",q," chosen ", nPars_QCD[iq]," parameter function"
