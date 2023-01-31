@@ -294,7 +294,11 @@ def plotGOF(obs_gof, exp_gof, quantile, n_dof=n_bins):
     d.Draw()
     d.Update()
     d.SaveAs("GOF_{q}.pdf".format(q=quantile))
-
+    with open('gof_pvalue.txt', 'w') as f:
+        line = "{} {} \n".format(options.xsec, pval)
+        print (line)
+        f.write(line)
+        
 def runFitDiagnosis(datacard, quantile, cats=['rej', 'acc']):
     
     os.system('combine -M FitDiagnostics -d {DATACARD} -n _{Q} --saveShapes --saveWithUncertainties --dataset data_obs --verbose 0'.format(DATACARD=datacard, Q=quantile))
@@ -425,7 +429,6 @@ def runCombination(datacarddir, qacc=['q30', 'q50', 'q70', 'q90']):
     plotGOF(obs_gof,exp_gof,"COMBINED", n_dof=n_bins*len(qacc))
   os.chdir(basedir)
  
-
 if __name__ == "__main__":
    
    # python gof.py -i dijetfit_output_dir/ -N 1000 -T -C # Runs the gof test on data and 1000 toys (only for the combination of all categories. for each quantile separately add -Q)
