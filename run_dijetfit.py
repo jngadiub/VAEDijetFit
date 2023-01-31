@@ -131,7 +131,7 @@ if __name__ == "__main__":
     inputDir = options.inputDir
     sigRes = options.sigRes
     qr_run = re.findall(r'qr_run_(\d+)',options.inputDir)[0]
-    xsec = np.array(get_xsec_scan_from_injection(options.sigXsec)) # pb
+    xsec = np.array(get_xsec_scan_from_injection(options.sigXsec)).astype('float') # pb
 
     # distinctive run string
     run_str = make_run_str(sig_name=options.sigFile, sig_xsec=options.sigXsec, qr_run_n=qr_run)
@@ -143,8 +143,8 @@ if __name__ == "__main__":
         print "ERROR: set the cross sections to scan for signal",sigFile,"in the files_count.json file!"
         sys.exit()
 
-    quantiles = ['q10', 'q30', 'q50', 'q70', 'q100', 'total']
-    labels = ['q:0-10%','q:10-30%','q:30-50%','q:50-70%','q:70-100%','bump hunt']
+    quantiles = ['q0', 'q30', 'q50', 'q70', 'q90', 'total']
+    labels = ['q:0-30%','q:30-50%','q:50-70%','q:70-90%','q:90-100%','bump hunt']
 
     #if you have already run the scan, results are saved in txt files 
     if options.plot:
@@ -168,6 +168,7 @@ if __name__ == "__main__":
         if x!=0: cmd+=' -l' #assuming first xsec is zero so after that you can load input data with option -l
         if options.correlateB == True: cmd += ' -C'
         print cmd
+        # import ipdb; ipdb.set_trace()
         os.system(cmd)
 
         for iq,q in enumerate(quantiles):
