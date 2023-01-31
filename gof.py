@@ -39,16 +39,16 @@ def load_data(indir,quantiles): # TODO! This is currently just opening the QCD f
     histos_qcd = {}
 
     for q in quantiles:
-        fname = os.path.join(indir, "data_mjj_sig_%s.root"%q)
+        fname = os.path.join(indir, "sb_fit_%s.root"%q)
         q_datafile = rt.TFile.Open(fname,'READ')
-        tmp = q_datafile.Get("mjj_sig_%s"%q)
+        tmp = q_datafile.Get("mjj_generate_sig_%s"%q)
         histos_sig[q] = tmp.Rebin(n_bins,tmp.GetName()+"_dijetBins",bin_edges)
         histos_sig[q].SetDirectory(rt.gROOT)
         q_datafile.Close()
 
-        fname = os.path.join(indir, "data_mjj_qcd_%s.root"%q)
+        fname = os.path.join(indir, "sb_fit_%s.root"%q)
         q_datafile = rt.TFile.Open(fname,'READ')
-        tmp = q_datafile.Get("mjj_qcd_%s"%q)
+        tmp = q_datafile.Get("mjj_generate_tot_%s"%q)
         histos_qcd[q] = tmp.Rebin(n_bins,tmp.GetName()+"_dijetBins",bin_edges)
         histos_qcd[q].SetDirectory(rt.gROOT)
         q_datafile.Close()
@@ -294,6 +294,7 @@ def plotGOF(obs_gof, exp_gof, quantile, n_dof=n_bins):
     d.Draw()
     d.Update()
     d.SaveAs("GOF_{q}.pdf".format(q=quantile))
+    logging.info("p-value =  %f"%pval)
     with open('gof_pvalue.txt', 'w') as f:
         line = "{} {} \n".format(options.xsec, pval)
         print (line)
@@ -417,7 +418,7 @@ def runCombination(datacarddir, qacc=['q30', 'q50', 'q70', 'q90']):
     print("Running %s toys with 5 different seeds!"%toys_per_job)
     for i in range(5):
         os.system('combine -M GoodnessOfFit --algo saturated --fixedSignalStrength 0 -d {CCARD}  -t {NTOYS} --toysFreq -n gof_toys_combined --dataset data_obs -v 0 -s {S}'.format(CCARD=combined_card_name,NTOYS=toys_per_job,S=22+i))
-    os.system('hadd -f higgsCombinegof_toys_combined.GoodnessOfFit.mH120.ALLTOYS.root higgsCombinegof_toys_combined.GoodnessOfFit.mH120.4*.root')
+    os.system('hadd -f higgsCombinegof_toys_combined.GoodnessOfFit.mH120.ALLTOYS.root higgsCombinegof_toys_combined.GoodnessOfFit.mH120.2*.root')
     obs_gof_file = uproot.open('higgsCombinegof_combined.GoodnessOfFit.mH120.root')
     obs_gof = obs_gof_file['limit'].arrays('limit')['limit'][0]
     exp_gof_file = uproot.open('higgsCombinegof_toys_combined.GoodnessOfFit.mH120.ALLTOYS.root')
