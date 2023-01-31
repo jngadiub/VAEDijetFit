@@ -208,7 +208,7 @@ if __name__ == "__main__":
       - chi2 ??
    ''' 
 
-   nParsToTry = [2, 3, 4]
+   nParsToTry = [2, 3] #[2, 3, 4]
    best_i = [0]*len(quantiles)
    nPars_QCD = [0]*len(quantiles)
    qcd_fname = [0]*len(quantiles)
