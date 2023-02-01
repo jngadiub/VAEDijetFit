@@ -1,8 +1,10 @@
 import numpy as np
 import optparse
 import json
-import pathlib
+import pathlib2 as pathli  # python 2 backport
 import os
+import ROOT
+from collections import defaultdict
 
 
 if __name__ == "__main__":
@@ -25,32 +27,33 @@ if __name__ == "__main__":
         100: 6160
     }
     experiment_dict = { 'GtoWW35naReco.h5': dict_g35na }
-    dd = experiment_dict[opt.sigFile]
+    dd = experiment_dict[opts.sigFile]
 
     quantiles = ['q0', 'q30', 'q50', 'q70', 'q90', 'total']
 
     # base output dir for signal
     out_dir_base = opts.sigFile[:-len('Reco.h5')]
+    pathli.Path(out_dir_base).mkdir(parents=True, exist_ok=True)
+
+    # open the outfiles, ysig and ypvalue datastructs to collect results across xsecs for each quantile
+    outfiles = {q: open('{}/results_{}.txt'.format(out_dir_base,q),'w') for q in quantiles}
+    ysig = defaultdict(list)
+    ypvalue = defaultdict(list)
 
     for xsec, qr_run in dd.items():
 
-        ### do bunp-hunt
+        # ****************************************************
+        #                       BUMP HUNT
+        # ****************************************************
 
         ## paths
 
         # distinct input dir for each cross section
         in_dir = '/eos/user/k/kiwoznia/data/QR_results/events/qr_run_'+str(dd[xsec])+'/env_run_0/poly_run_0/'
         # distinct output subdir for each cross section
-        out_dir = os.path.join(out_dir_base,'xsec'+int(xsec)+'_qr'+int(qr_run))
+        out_dir = os.path.join(out_dir_base,'xsec'+str(int(xsec))+'_qr'+str(int(qr_run)))
 
         xsec = float(xsec)
-        ysig = {}
-        ypvalue = {}
-        outfiles = []
-        for q in quantiles:
-            ysig[q] = []
-            ypvalue[q] = []
-            outfiles.append(open(out_dir_base+'/results_%s.txt'%q,'w'))
 
         ## run dijetfit
         if not opts.signi:
@@ -63,74 +66,76 @@ if __name__ == "__main__":
             os.system(cmd)
 
         ## calculate significance
-        for iq,q in enumerate(quantiles):
+        for q in quantiles:
 
-            cmd = 'cd {out_dir} && combine -M Significance workspace_JJ_{xsec}_{quantile}.root -m {mass} -n significance_{xsec}_{quantile}'.format(out_dir=out_dir, xsec=xsec, quantile=q, mass=int(mass))
+            cmd = 'cd {out_dir} && combine -M Significance workspace_JJ_{xsec}_{quantile}.root -m {mass} -n significance_{xsec}_{quantile}'.format(out_dir=out_dir, xsec=xsec, quantile=q, mass=int(opts.mass))
             print(cmd)
             os.system(cmd)
 
-            cmd = 'cd {out_dir} && combine -M Significance workspace_JJ_{xsec}_{quantile}.root -m {mass} -n pvalue_{xsec}_{quantile} --pvalue'.format(out_dir=out_dir, xsec=xsec, quantile=q, mass=int(mass))
+            cmd = 'cd {out_dir} && combine -M Significance workspace_JJ_{xsec}_{quantile}.root -m {mass} -n pvalue_{xsec}_{quantile} --pvalue'.format(out_dir=out_dir, xsec=xsec, quantile=q, mass=int(opts.mass))
             print(cmd)
             os.system(cmd)
                 
-            tf = ROOT.TFile.Open('{out_dir}/higgsCombinesignificance_{xsec}_{quantile}.Significance.mH{mass}.root'.format(out_dir=out_dir, xsec=xsec, quantile=q, mass=int(mass)), 'READ')
+            tf = ROOT.TFile.Open('{out_dir}/higgsCombinesignificance_{xsec}_{quantile}.Significance.mH{mass}.root'.format(out_dir=out_dir, xsec=xsec, quantile=q, mass=int(opts.mass)), 'READ')
             tree = tf.limit
             tree.GetEntry(0)         
             ysig[q].append(tree.limit)
             print("Xsec {}, quantile {}, significance {}".format(xsec,q,ysig[q][-1]))       
             tf.Close()
 
-            tf = ROOT.TFile.Open('{out_dir}/higgsCombinepvalue_{xsec}_{quantile}.Significance.mH{mass}.root'.format(out_dir=out_dir, xsec=xsec, quantile=q, mass=int(mass)), 'READ')
+            tf = ROOT.TFile.Open('{out_dir}/higgsCombinepvalue_{xsec}_{quantile}.Significance.mH{mass}.root'.format(out_dir=out_dir, xsec=xsec, quantile=q, mass=int(opts.mass)), 'READ')
             tree = tf.limit
             tree.GetEntry(0)         
             ypvalue[q].append(tree.limit)        
             tf.Close()
 
-            outfiles[iq].write('{xsec}\t{pvalue}\t{sig}\n'.format(xsec=xsec,pvalue=ypvalue[q][-1],sig=ysig[q][-1]))
+            outfiles[q].write('{xsec}\t{pvalue}\t{sig}\n'.format(xsec=xsec,pvalue=ypvalue[q][-1],sig=ysig[q][-1]))
 
         # end for each quantile
 
-        for iq, q in enumerate(quantiles): outfiles[iq].close()
-
     # end for each xsec
+    for q in quantiles: outfiles[q].close()
 
-    ysig['combo'] = []
-    ypvalue['combo'] = []
-    outfiles.append(open(out_dir_base+'/results_final.txt','w')) # save final quantile-combined xsec scan results to signal root directory
+    ### combination
+
+    outfiles['combo'] = open(out_dir_base+'/results_final.txt','w') # save final quantile-combined xsec scan results to signal root directory
 
     for xsec, qr_run in dd.items():
 
-        out_dir = os.path.join(out_dir_base,'xsec'+int(xsec)+'_qr'+int(qr_run))
+        out_dir = os.path.join(out_dir_base,'xsec'+str(int(xsec))+'_qr'+str(int(qr_run)))
         xsec = float(xsec)
 
-        cmd = 'cd {out_dir} && combine -M Significance workspace_{xsec}_{label}.root -m {mass} -n significance_{xsec}'.format(out_dir=out_dir, xsec=xsec,label='final',mass=int(mass))
+        cmd = 'cd {out_dir} && combine -M Significance workspace_{xsec}_{label}.root -m {mass} -n significance_{xsec}'.format(out_dir=out_dir, xsec=xsec,label='final',mass=int(opts.mass))
         print cmd
         os.system(cmd)
 
-        cmd = 'cd {out_dir} && combine -M Significance workspace_{xsec}_{label}.root -m {mass} -n pvalue_{xsec} --pvalue'.format(out_dir=out_dir, xsec=xsec,label='final',mass=int(mass))
+        cmd = 'cd {out_dir} && combine -M Significance workspace_{xsec}_{label}.root -m {mass} -n pvalue_{xsec} --pvalue'.format(out_dir=out_dir, xsec=xsec,label='final',mass=int(opts.mass))
         print cmd
         os.system(cmd)
             
-        tf = ROOT.TFile.Open('{out_dir}/higgsCombinesignificance_{xsec}.Significance.mH{mass}.root'.format(out_dir=out_dir, xsec=xsec,mass=int(mass)),'READ')
+        tf = ROOT.TFile.Open('{out_dir}/higgsCombinesignificance_{xsec}.Significance.mH{mass}.root'.format(out_dir=out_dir, xsec=xsec,mass=int(opts.mass)),'READ')
         tree = tf.limit
         tree.GetEntry(0)             
         ysig['combo'].append(tree.limit)             
-        print "Xsec",x,"COMBO significance",ysig['combo'][-1]        
+        print "Xsec",xsec,"COMBO significance",ysig['combo'][-1]        
         tf.Close()
 
-        tf = ROOT.TFile.Open('{out_dir}/higgsCombinepvalue_{xsec}.Significance.mH{mass}.root'.format(out_dir=out_dir, xsec=xsec,mass=int(mass)),'READ')
+        tf = ROOT.TFile.Open('{out_dir}/higgsCombinepvalue_{xsec}.Significance.mH{mass}.root'.format(out_dir=out_dir, xsec=xsec,mass=int(opts.mass)),'READ')
         tree = tf.limit
         tree.GetEntry(0)             
         ypvalue['combo'].append(tree.limit)          
         tf.Close()
 
-        outfiles[-1].write('{xsec}\t{pvalue}\t{sig}\n'.format(xsec=xsec, pvalue=ypvalue['combo'][-1], sig=ysig['combo'][-1]))  
+        outfiles['combo'].write('{xsec}\t{pvalue}\t{sig}\n'.format(xsec=xsec, pvalue=ypvalue['combo'][-1], sig=ysig['combo'][-1]))  
  
-    outfiles[-1].close()
+    outfiles['combo'].close()
     
     print ysig
     print ypvalue
 
 
-    ### do GOF
+    # ****************************************************
+    #                       GOF
+    # ****************************************************
+
 
