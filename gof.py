@@ -298,8 +298,8 @@ def plotGOF(obs_gof, exp_gof, quantile, n_dof=n_bins):
     d.Update()
     d.SaveAs("GOF_{q}.pdf".format(q=quantile))
     logging.info("p-value =  %f"%pval)
-    with open('gof_pvalue.txt', 'w') as f:
-        line = "{} {} \n".format(options.xsec, pval)
+    with open('gof_pvalue.txt', 'a') as f:
+        line = "{} {} \n".format(quantile, pval)
         print (line)
         f.write(line)
         
@@ -386,7 +386,7 @@ def runCombine(quantile,datacarddir):
         obs_gof = obs_gof_file['limit'].arrays('limit')['limit'][0]
         exp_gof_file = uproot.open('higgsCombinegof_toys_{Q}.GoodnessOfFit.mH120.ALLTOYS.root'.format(Q=quantile))
         exp_gof = exp_gof_file['limit'].arrays('limit')['limit']
-        logging.info('Observed versus e-expected GOF test statistics for quantile ', quantile) 
+        logging.info('Observed versus e-expected GOF test statistics for quantile {}'.format(quantile)) 
         logging.info("Obs.   {:.1f}".format(obs_gof))
         logging.info("Exp.   {:.1f}\n".format(np.mean(exp_gof)))   
         runFitDiagnosis(cardname, quantile)
@@ -419,7 +419,7 @@ def runCombination(datacarddir, qacc=['q30', 'q50', 'q70', 'q90']):
   if options.runToys:
     toys_per_job = int(options.ntoys)/5
     print("Running %s toys with 5 different seeds!"%toys_per_job)
-    for i in range(5):
+    for i in range(1):
         os.system('combine -M GoodnessOfFit --algo saturated --fixedSignalStrength 0 -d {CCARD}  -t {NTOYS} --toysFreq -n gof_toys_combined --dataset data_obs -v 0 -s {S}'.format(CCARD=combined_card_name,NTOYS=toys_per_job,S=22+i))
     os.system('hadd -f higgsCombinegof_toys_combined.GoodnessOfFit.mH120.ALLTOYS.root higgsCombinegof_toys_combined.GoodnessOfFit.mH120.2*.root')
     obs_gof_file = uproot.open('higgsCombinegof_combined.GoodnessOfFit.mH120.root')
@@ -429,8 +429,8 @@ def runCombination(datacarddir, qacc=['q30', 'q50', 'q70', 'q90']):
     logging.info('Observed versus e-expected GOF test statistics for combination') 
     logging.info("Obs.   {:.1f}".format(obs_gof))
     logging.info("Exp.   {:.1f}\n".format(np.mean(exp_gof)))   
-    runFitDiagnosis(combined_card_name, "COMBINED", cats=['rej','q30', 'q50', 'q70', 'q90'])
-    plotGOF(obs_gof,exp_gof,"COMBINED", n_dof=n_bins*len(qacc))
+    runFitDiagnosis(combined_card_name, "combo", cats=['rej','q30', 'q50', 'q70', 'q90'])
+    plotGOF(obs_gof,exp_gof,"combo", n_dof=n_bins*len(qacc))
   os.chdir(basedir)
  
 if __name__ == "__main__":
@@ -444,7 +444,7 @@ if __name__ == "__main__":
    parser.add_option('-C','--doCombination',action='store_true', dest='doCombination', default=False, help='do full combination')
    parser.add_option('-Q','--perQuantile',action='store_true', dest='doPerQuantile', default=False, help='do per quantile fit')
    # These are only needed for plot labels, the fit itself just needs input data (with injected signal) and a signal shape (to keep conmbine happy, not used)
-   parser.add_option("--xsec","--xsec",dest="xsec",type=float,default=0.0006,help="Injected signal cross section in fb, only used for plotting")
+   parser.add_option("--xsec", "--xsec", dest="xsec", type=float, default=50, help="Injected signal cross section in fb, only used for plotting")
    parser.add_option("-M","--mx",dest="mass",type=float,default=3500.,help="Injected signal mass, only used for plotting")
    parser.add_option("--res", "--res", dest="sig_res", type="choice", choices=("na", "br"), default="na", help="resonance type: narrow [na] or broad [br], only used for plotting")
    
@@ -454,6 +454,9 @@ if __name__ == "__main__":
    sig_res = options.sig_res
    indir = options.indir
    outdir = indir
+
+   # clean up outputs
+   os.system('rm '+outdir+'/gof_pvalue.txt') 
 
    quantiles = ['q0', 'q30', 'q50', 'q70', 'q90', 'total'] #Delphes inverted w.r.t CASE -- most anomalous is q90
    legends  = ['q = 0-30', 'q = 30-50', 'q = 50-70', 'q = 70-90', 'q = 90-100', 'Inclusive'] # For plotting

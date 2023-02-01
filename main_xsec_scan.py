@@ -10,7 +10,7 @@ from util_plotting import *
 
 if __name__ == "__main__":
 
-    #python main_xsec_scan.py -M 3500 --sig GtoWW35naReco.h5 --qcd qcdSigAll.h5 --res na -C --plt
+    #python main_xsec_scan.py -M 3500 --sig GtoWW35naReco.h5 --qcd qcdSigAll.h5 --res na -C --plt --gof --pltgof
 
     parser = optparse.OptionParser()
     parser.add_option("-M","-M", dest="mass", type=float, default=3500., help="Injected signal mass")
@@ -21,6 +21,7 @@ if __name__ == "__main__":
     parser.add_option('--signi', dest='signi',action='store_true', help='run only the significance tests')
     parser.add_option('--plt', dest='plt_only',action='store_true', help='plot only xsec scan results')
     parser.add_option('--gof', dest='do_gof',action='store_true', help='run the goodness of fit test')
+    parser.add_option('--pltgof', dest='plt_gof',action='store_true', help='plot gof xsec scan results')
     (opts,args) = parser.parse_args()
 
 
@@ -138,7 +139,7 @@ if __name__ == "__main__":
         print ysig
         print ypvalue
 
-    # end if plot only
+    # end if not plot only
 
     plotPValue(list(dd.keys()), quantiles + ['final'], labels + ['AD bump hunt'], '_'.join([str(qr) for qr in dd.values()]), out_dir=out_dir_base)
     print("CHECK OUTPUT FOLDER",out_dir_base)
@@ -147,11 +148,16 @@ if __name__ == "__main__":
     #                       GOF
     # ****************************************************
 
+    # GOF does not have pvalues for q0-30 because is serves as template and no 'total' quantile
+
     if opts.do_gof is True:
 
-        # e.g. python gof.py -i GtoWW35na/xsec100_qr6160 -N 1000 -T -C
+        # ypvalue datastructs to collect results across xsecs for each quantile
+        ypvalue = defaultdict(list)
+
+        # e.g. python gof.py -i GtoWW35na/xsec100_qr6160 -N 1000 -T -C -Q
         
-        toys_n = 1000
+        toys_n = 3
 
         for xsec, qr_run in dd.items():
 
@@ -159,13 +165,31 @@ if __name__ == "__main__":
             if opts.correlateB is False:
                     dijet_out_dir += '_noco'
 
-            cmd = 'python gof.py -i {} --xsec {} -N {} -T'.format(dijet_out_dir, xsec, toys_n)
-            if options.correlateB == True: 
+            cmd = 'python gof.py -i {} --xsec {} -N {} -T -Q'.format(dijet_out_dir, xsec, toys_n)
+            if opts.correlateB == True: 
                 cmd += ' -C'
 
             print(cmd)
             os.system(cmd)
 
             # open the file produced by gof and append to xsec results collection
-            
+            gof_out_file_path = os.path.join(dijet_out_dir,'gof_pvalue.txt')
+            with open(gof_out_file_path,'r') as ff:
+                for ll in ff:
+                    ll = ll.split(' ')
+                    ypvalue[ll[0]].append(ll[1]) # write pvalue of quantile for current xsec 
+
+        # end for each xsec
+
+        # open the quantile outfiles and write p-value for all cross sections
+        outfiles = {q: open('{}/gof_results_{}.txt'.format(out_dir_base,q),'w') for q in quantiles[1:-1]+['combo']}
+        for q in quantiles[1:-1]+['combo']:
+            for xi,xsec in enumerate(dd.keys()):
+                outfiles[q].write('{xsec}\t{pvalue}\n'.format(xsec=xsec,pvalue=ypvalue[q][xi]))
+
+        for q in quantiles[1:-1]+['combo']: outfiles[q].close()
+
+    if opts.plt_gof:
+        # plot pvalues gof
+        plotPValue(list(dd.keys()), quantiles[1:-1] + ['combo'], labels[1:-1] + ['GOF combo'], '_'.join(['GOF']+[str(qr) for qr in dd.values()]), out_dir=out_dir_base, for_gof=True)    
 

@@ -56,7 +56,7 @@ def get_canvas(cname):
     return canvas
     
 
-def plotPValue(xsec_scan, quantiles, labels, plot_name_suffix='', out_dir=''):
+def plotPValue(xsec_scan, quantiles, labels, plot_name_suffix='', out_dir='', for_gof=False):
 
     xsec_scan = np.asarray(xsec_scan, dtype=np.float32)
 
@@ -83,20 +83,24 @@ def plotPValue(xsec_scan, quantiles, labels, plot_name_suffix='', out_dir=''):
     col = ROOT.TColor()
  
     for iq,q in enumerate(quantiles):
+
+        fname = 'results_{}.txt'.format(q)
+        if for_gof: fname = 'gof_'+fname
     
         x = array('d', xsec_scan*scale)
         ys = array('d', [])
         yp = array('d',[])
 
         print(out_dir)
-        fin = open(os.path.join(out_dir,'results_%s.txt'%q), 'r')
+        fin = open(os.path.join(out_dir,fname), 'r')
         for l in fin.readlines():
             l = l.split('\t')
             yp.append(float(l[1]))
-            ys.append(float(l[2]))
+            if not for_gof:
+                ys.append(float(l[2]))
         fin.close()
     
-        print(iq,q,ys)
+        if not for_gof: print(iq,q,ys)
         print(iq,q,yp)
         nPoints=len(x)
         gp = ROOT.TGraph(nPoints,x,yp)
@@ -155,3 +159,4 @@ def plotPValue(xsec_scan, quantiles, labels, plot_name_suffix='', out_dir=''):
  
     canv.SaveAs(os.path.join(out_dir, "pvalue"+plot_name_suffix+".png"))
     # time.sleep(10)
+    
