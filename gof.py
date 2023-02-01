@@ -33,15 +33,18 @@ bws = (max_bin-min_bin)/n_bins
 col = ['#66c2a5','#fc8d62','#8da0cb','#e78ac3','#a6d854','#ffd92f'] *3
 col.reverse()
 
-def load_data(indir,quantiles): # TODO! This is currently just opening the QCD file as if it was data with already signal injected (which is what Benedikt has). For Kingas setup, this signal needs to be scaled and injected.
+def load_data(indir,quantiles,xsec): # TODO! This is currently just opening the QCD file as if it was data with already signal injected (which is what Benedikt has). For Kingas setup, this signal needs to be scaled and injected.
 
     histos_sig = {}
     histos_qcd = {}
 
+    sig_file = "data_mjj_sig_" if xsec == 0 else "sb_fit_"
+    sig_key = "mjj_sig_" if xsec == 0 else "mjj_generate_sig_"
+
     for q in quantiles:
-        fname = os.path.join(indir, "sb_fit_%s.root"%q)
+        fname = os.path.join(indir, sig_file+str(q)+".root")
         q_datafile = rt.TFile.Open(fname,'READ')
-        tmp = q_datafile.Get("mjj_generate_sig_%s"%q)
+        tmp = q_datafile.Get(sig_key+str(q))
         histos_sig[q] = tmp.Rebin(n_bins,tmp.GetName()+"_dijetBins",bin_edges)
         histos_sig[q].SetDirectory(rt.gROOT)
         q_datafile.Close()
@@ -383,11 +386,11 @@ def runCombine(quantile,datacarddir):
         obs_gof = obs_gof_file['limit'].arrays('limit')['limit'][0]
         exp_gof_file = uproot.open('higgsCombinegof_toys_{Q}.GoodnessOfFit.mH120.ALLTOYS.root'.format(Q=quantile))
         exp_gof = exp_gof_file['limit'].arrays('limit')['limit']
-        logging.info('Observed versus e-expected GOF test statistics for quantile ', q) 
+        logging.info('Observed versus e-expected GOF test statistics for quantile ', quantile) 
         logging.info("Obs.   {:.1f}".format(obs_gof))
         logging.info("Exp.   {:.1f}\n".format(np.mean(exp_gof)))   
         runFitDiagnosis(cardname, quantile)
-        plotGOF(obs_gof,exp_gof,q)
+        plotGOF(obs_gof,exp_gof,quantile)
 
     os.chdir(basedir)
 
@@ -432,7 +435,7 @@ def runCombination(datacarddir, qacc=['q30', 'q50', 'q70', 'q90']):
  
 if __name__ == "__main__":
    
-   # python gof.py -i dijetfit_output_dir/ -N 1000 -T -C # Runs the gof test on data and 1000 toys (only for the combination of all categories. for each quantile separately add -Q)
+   # python gof.py -i dijetfit_output_dir/ -N 1000 -T -C --xsec 100 -Q # Runs the gof test on data and 1000 toys (only for the combination of all categories. for each quantile separately add -Q)
    parser = optparse.OptionParser()
    # These are neccessary for running the fits
    parser.add_option("-i","--indir",dest="indir",default='./',help="directory with histogram outputs from dijet fitting code (dataset and signal shape)")
@@ -456,8 +459,9 @@ if __name__ == "__main__":
    legends  = ['q = 0-30', 'q = 30-50', 'q = 50-70', 'q = 70-90', 'q = 90-100', 'Inclusive'] # For plotting
    
    logging.info("Loading data and plotting ratios")
-   histos_sig, histos_qcd = load_data(indir,quantiles) # Loading the data, assume one datafile (with signal already injected, when applies) and one signal data file
-   make_ratio_plots(histos_sig, histos_qcd, quantiles, indir, mass, options.xsec, options.sig_res, legends) # Make nice plots with ratio cotrol region/ signal region
+   histos_sig, histos_qcd = load_data(indir,quantiles,options.xsec) # Loading the data, assume one datafile (with signal already injected, when applies) and one signal data file
+   # import ipdb; ipdb.set_trace()
+   #make_ratio_plots(histos_sig, histos_qcd, quantiles, indir, mass, options.xsec, options.sig_res, legends) # Make nice plots with ratio cotrol region/ signal region
    
    logging.info("Making workspaces and running per-quantile fits if --perQuantile==True")
    for q in quantiles:

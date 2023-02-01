@@ -20,6 +20,7 @@ if __name__ == "__main__":
     parser.add_option('-C', dest="correlateB",action="store_true",help="Coorelate background shape among quantiles")
     parser.add_option('--signi', dest='signi',action='store_true', help='run only the significance tests')
     parser.add_option('--plt', dest='plt_only',action='store_true', help='plot only xsec scan results')
+    parser.add_option('--gof', dest='do_gof',action='store_true', help='run the goodness of fit test')
     (opts,args) = parser.parse_args()
 
 
@@ -57,16 +58,15 @@ if __name__ == "__main__":
             in_dir = '/eos/user/k/kiwoznia/data/QR_results/events/qr_run_'+str(dd[xsec])+'/env_run_0/poly_run_0/'
             # distinct output subdir for each cross section
             out_dir = os.path.join(out_dir_base,'xsec'+str(int(xsec))+'_qr'+str(int(qr_run)))
-
+            if opts.correlateB is False:
+                out_dir += '_noco'
             xsec = float(xsec)
 
             ## run dijetfit
             if not opts.signi:
                 cmd = "python dijetfit.py -i {in_dir} --sig {sigfile} --qcd {qcdfile} --xsec {xsec} -M {mass} --res {res} --out {out_dir}".format(in_dir=in_dir, xsec=xsec, sigfile=opts.sigFile, qcdfile=opts.qcdFile, mass=opts.mass, res=opts.sigRes, out_dir=out_dir)
-                if options.correlateB == True: 
+                if options.correlateB is True: 
                     cmd += ' -C'
-                else:
-                    out_dir += '_noco'
                 print(cmd)
                 os.system(cmd)
 
@@ -147,4 +147,25 @@ if __name__ == "__main__":
     #                       GOF
     # ****************************************************
 
+    if opts.do_gof is True:
+
+        # e.g. python gof.py -i GtoWW35na/xsec100_qr6160 -N 1000 -T -C
+        
+        toys_n = 1000
+
+        for xsec, qr_run in dd.items():
+
+            dijet_out_dir = os.path.join(out_dir_base,'xsec'+str(int(xsec))+'_qr'+str(int(qr_run)))
+            if opts.correlateB is False:
+                    dijet_out_dir += '_noco'
+
+            cmd = 'python gof.py -i {} --xsec {} -N {} -T'.format(dijet_out_dir, xsec, toys_n)
+            if options.correlateB == True: 
+                cmd += ' -C'
+
+            print(cmd)
+            os.system(cmd)
+
+            # open the file produced by gof and append to xsec results collection
+            
 
