@@ -39,19 +39,24 @@ def load_data(indir,quantiles): # TODO! This is currently just opening the QCD f
     histos_qcd = {}
 
     for q in quantiles:
+      if options.xsec==0:
+        fname = os.path.join(indir, "data_mjj_sig_%s.root"%q)
+        q_datafile = rt.TFile.Open(fname,'READ')
+        tmp = q_datafile.Get("mjj_sig_%s"%q)
+      else:   
         fname = os.path.join(indir, "sb_fit_%s.root"%q)
         q_datafile = rt.TFile.Open(fname,'READ')
         tmp = q_datafile.Get("mjj_generate_sig_%s"%q)
-        histos_sig[q] = tmp.Rebin(n_bins,tmp.GetName()+"_dijetBins",bin_edges)
-        histos_sig[q].SetDirectory(rt.gROOT)
-        q_datafile.Close()
+      histos_sig[q] = tmp.Rebin(n_bins,tmp.GetName()+"_dijetBins",bin_edges)
+      histos_sig[q].SetDirectory(rt.gROOT)
+      q_datafile.Close()
 
-        fname = os.path.join(indir, "sb_fit_%s.root"%q)
-        q_datafile = rt.TFile.Open(fname,'READ')
-        tmp = q_datafile.Get("mjj_generate_tot_%s"%q)
-        histos_qcd[q] = tmp.Rebin(n_bins,tmp.GetName()+"_dijetBins",bin_edges)
-        histos_qcd[q].SetDirectory(rt.gROOT)
-        q_datafile.Close()
+      fname = os.path.join(indir, "sb_fit_%s.root"%q)
+      q_datafile = rt.TFile.Open(fname,'READ')
+      tmp = q_datafile.Get("mjj_generate_tot_%s"%q)
+      histos_qcd[q] = tmp.Rebin(n_bins,tmp.GetName()+"_dijetBins",bin_edges)
+      histos_qcd[q].SetDirectory(rt.gROOT)
+      q_datafile.Close()
 
     return histos_sig, histos_qcd
 
