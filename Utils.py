@@ -533,7 +533,7 @@ def checkSBFit(filename,label,roobins,plotname, nPars, plot_dir):
 
     
     fres = model.fitTo(data,ROOT.RooFit.SumW2Error(1),ROOT.RooFit.Minos(0),ROOT.RooFit.Verbose(0),ROOT.RooFit.Save(1),ROOT.RooFit.NumCPU(8)) 
-    #fres.Print()
+    fres.Print()
     
     frame = var.frame()
     
