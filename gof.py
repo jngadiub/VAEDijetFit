@@ -11,7 +11,7 @@ import logging
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
-lumi = 64
+lumi = 63.95
 # bin_edges = np.array([1200,1246,1313,1383,1455,1530,1607,1687,
 #                       1770,1856,1945,2037,2132,2231,2332,2438,
 #                       2546,2659,2775,2895,3019,3147,3279,3416,
@@ -93,7 +93,7 @@ def make_ratio_plots(histos_sig, histos_qcd, quantiles, indir, mx, xs, width, le
         histos_qcd[q].SetMarkerColor(rt.TColor.GetColor(col[i]))
         histos_qcd[q].Draw('pez same')
         leg.AddEntry(histos_qcd[q]  , legends[i], 'lep')
-        leg.AddEntry(None, '', '')
+        #leg.AddEntry(None, '', '')
     histos_qcd['q0'].Draw('HISTsame')
     leg.Draw('same')
     pad1.SetLogy()
@@ -315,7 +315,7 @@ def runFitDiagnosis(datacard, quantile, cats=['rej', 'acc']):
     byhand_gof = 0.0
 
     for cat in cats:
-        print cat
+        print(cat)
         bkgd = fitDiag.Get('shapes_fit_b/{cat}/background'.format(cat=cat))
         bkgd.Scale(bws) # need to multiply by bin width for some reason?
         data = fitDiag.Get('shapes_fit_b/{cat}/data'.format(cat=cat))
@@ -341,9 +341,9 @@ def runFitDiagnosis(datacard, quantile, cats=['rej', 'acc']):
             fi = bkgd.GetBinContent(i+1)
             di = data.GetY()[i]
             if di == 0:
-                print ("No data at mjj", mjjvalue)
-                print ("fi", fi)
-                print ("di", di)
+                print("No data at mjj", mjjvalue)
+                print("fi", fi)
+                print("di", di)
                 gofi = 0.
             else:    
                 gofi = 2*(fi - di + di*rt.TMath.Log(di/fi)) # see eq. 14 of http://cousins.web.cern.ch/cousins/ongoodness6march2016.pdf # expect each bin to give GOF contribution ~ O(1)
@@ -388,7 +388,7 @@ def runCombine(quantile,datacarddir):
 
 def runCombination(datacarddir, qacc=['q30', 'q50', 'q70', 'q90']):
   
-  print "\n Doing full combination of all quantiles"
+  print("\n Doing full combination of all quantiles")
 
   basedir = os.getcwd()
   workdir = '{}/{}'.format(basedir,datacarddir)
