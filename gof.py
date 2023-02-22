@@ -39,19 +39,24 @@ def load_data(indir,quantiles): # TODO! This is currently just opening the QCD f
     histos_qcd = {}
 
     for q in quantiles:
+      if options.xsec==0:
         fname = os.path.join(indir, "data_mjj_sig_%s.root"%q)
         q_datafile = rt.TFile.Open(fname,'READ')
         tmp = q_datafile.Get("mjj_sig_%s"%q)
-        histos_sig[q] = tmp.Rebin(n_bins,tmp.GetName()+"_dijetBins",bin_edges)
-        histos_sig[q].SetDirectory(rt.gROOT)
-        q_datafile.Close()
-
-        fname = os.path.join(indir, "data_mjj_qcd_%s.root"%q)
+      else:   
+        fname = os.path.join(indir, "sb_fit_%s.root"%q)
         q_datafile = rt.TFile.Open(fname,'READ')
-        tmp = q_datafile.Get("mjj_qcd_%s"%q)
-        histos_qcd[q] = tmp.Rebin(n_bins,tmp.GetName()+"_dijetBins",bin_edges)
-        histos_qcd[q].SetDirectory(rt.gROOT)
-        q_datafile.Close()
+        tmp = q_datafile.Get("mjj_generate_sig_%s"%q)
+      histos_sig[q] = tmp.Rebin(n_bins,tmp.GetName()+"_dijetBins",bin_edges)
+      histos_sig[q].SetDirectory(rt.gROOT)
+      q_datafile.Close()
+
+      fname = os.path.join(indir, "sb_fit_%s.root"%q)
+      q_datafile = rt.TFile.Open(fname,'READ')
+      tmp = q_datafile.Get("mjj_generate_tot_%s"%q)
+      histos_qcd[q] = tmp.Rebin(n_bins,tmp.GetName()+"_dijetBins",bin_edges)
+      histos_qcd[q].SetDirectory(rt.gROOT)
+      q_datafile.Close()
 
     return histos_sig, histos_qcd
 
@@ -294,7 +299,12 @@ def plotGOF(obs_gof, exp_gof, quantile, n_dof=n_bins):
     d.Draw()
     d.Update()
     d.SaveAs("GOF_{q}.pdf".format(q=quantile))
-
+    logging.info("p-value =  %f"%pval)
+    with open('gof_pvalue.txt', 'w') as f:
+        line = "{} {} \n".format(options.xsec, pval)
+        print (line)
+        f.write(line)
+        
 def runFitDiagnosis(datacard, quantile, cats=['rej', 'acc']):
     
     os.system('combine -M FitDiagnostics -d {DATACARD} -n _{Q} --saveShapes --saveWithUncertainties --dataset data_obs --verbose 0'.format(DATACARD=datacard, Q=quantile))
@@ -413,7 +423,7 @@ def runCombination(datacarddir, qacc=['q30', 'q50', 'q70', 'q90']):
     print("Running %s toys with 5 different seeds!"%toys_per_job)
     for i in range(5):
         os.system('combine -M GoodnessOfFit --algo saturated --fixedSignalStrength 0 -d {CCARD}  -t {NTOYS} --toysFreq -n gof_toys_combined --dataset data_obs -v 0 -s {S}'.format(CCARD=combined_card_name,NTOYS=toys_per_job,S=22+i))
-    os.system('hadd -f higgsCombinegof_toys_combined.GoodnessOfFit.mH120.ALLTOYS.root higgsCombinegof_toys_combined.GoodnessOfFit.mH120.4*.root')
+    os.system('hadd -f higgsCombinegof_toys_combined.GoodnessOfFit.mH120.ALLTOYS.root higgsCombinegof_toys_combined.GoodnessOfFit.mH120.2*.root')
     obs_gof_file = uproot.open('higgsCombinegof_combined.GoodnessOfFit.mH120.root')
     obs_gof = obs_gof_file['limit'].arrays('limit')['limit'][0]
     exp_gof_file = uproot.open('higgsCombinegof_toys_combined.GoodnessOfFit.mH120.ALLTOYS.root')
@@ -425,18 +435,21 @@ def runCombination(datacarddir, qacc=['q30', 'q50', 'q70', 'q90']):
     plotGOF(obs_gof,exp_gof,"COMBINED", n_dof=n_bins*len(qacc))
   os.chdir(basedir)
  
-
 if __name__ == "__main__":
-
+   
+   # python gof.py -i dijetfit_output_dir/ -N 1000 -T -C # Runs the gof test on data and 1000 toys (only for the combination of all categories. for each quantile separately add -Q)
    parser = optparse.OptionParser()
-   parser.add_option("--xsec","--xsec",dest="xsec",type=float,default=0.0006,help="Injected signal cross section in fb")
-   parser.add_option("-M","-M",dest="mass",type=float,default=3500.,help="Injected signal mass")
-   parser.add_option("-i","--indir",dest="indir",default='./',help="directory with histogram outputs from dijet fitting code")
-   parser.add_option("--res", "--res", dest="sig_res", type="choice", choices=("na", "br"), default="na", help="resonance type: narrow [na] or broad [br]")
+   # These are neccessary for running the fits
+   parser.add_option("-i","--indir",dest="indir",default='./',help="directory with histogram outputs from dijet fitting code (dataset and signal shape)")
    parser.add_option('-N','--ntoys', dest='ntoys',default=100)
-   parser.add_option('-T','--runToys',action='store_true', dest='runToys'  , default=False, help='runToys')
-   parser.add_option('-C','--doCombination',action='store_true', dest='doCombination'  , default=False, help='do full combination')
-   parser.add_option('-Q','--perQuantile',action='store_true', dest='doPerQuantile'  , default=False, help='do per quantile fit')
+   parser.add_option('-T','--runToys',action='store_true', dest='runToys', default=False, help='Run toys based on Asimov data')
+   parser.add_option('-C','--doCombination',action='store_true', dest='doCombination', default=False, help='do full combination')
+   parser.add_option('-Q','--perQuantile',action='store_true', dest='doPerQuantile', default=False, help='do per quantile fit')
+   # These are only needed for plot labels, the fit itself just needs input data (with injected signal) and a signal shape (to keep conmbine happy, not used)
+   parser.add_option("--xsec","--xsec",dest="xsec",type=float,default=0.0006,help="Injected signal cross section in fb, only used for plotting")
+   parser.add_option("-M","--mx",dest="mass",type=float,default=3500.,help="Injected signal mass, only used for plotting")
+   parser.add_option("--res", "--res", dest="sig_res", type="choice", choices=("na", "br"), default="na", help="resonance type: narrow [na] or broad [br], only used for plotting")
+   
    (options,args) = parser.parse_args()
     
    mass = options.mass
@@ -444,21 +457,22 @@ if __name__ == "__main__":
    indir = options.indir
    outdir = indir
 
-   quantiles = ['q0', 'q30', 'q50', 'q70', 'q90', 'total'] #Delphes inverted wrt CASE -- most anomalous is q90
-   legends  = ['q = 0-30', 'q = 30-50', 'q = 50-70', 'q = 70-90', 'q = 90-100', 'Inclusive'] 
+   quantiles = ['q0', 'q30', 'q50', 'q70', 'q90', 'total'] #Delphes inverted w.r.t CASE -- most anomalous is q90
+   legends  = ['q = 0-30', 'q = 30-50', 'q = 50-70', 'q = 70-90', 'q = 90-100', 'Inclusive'] # For plotting
    
    logging.info("Loading data and plotting ratios")
-   histos_sig, histos_qcd = load_data(indir,quantiles)
-   make_ratio_plots(histos_sig, histos_qcd, quantiles, indir, mass, options.xsec, options.sig_res, legends)
+   histos_sig, histos_qcd = load_data(indir,quantiles) # Loading the data, assume one datafile (with signal already injected, when applies) and one signal data file
+   make_ratio_plots(histos_sig, histos_qcd, quantiles, indir, mass, options.xsec, options.sig_res, legends) # Make nice plots with ratio cotrol region/ signal region
    
-   logging.info("Making workspaces and running per-quantile fits")
+   logging.info("Making workspaces and running per-quantile fits if --perQuantile==True")
    for q in quantiles:
     if q not in ['q0','total']:
-        makeWS(histos_qcd['q0'], histos_qcd[q], histos_sig['q0'], histos_sig[q], outdir, q)
-        runCombine(q,outdir)
+        makeWS(histos_qcd['q0'], histos_qcd[q], histos_sig['q0'], histos_sig[q], outdir, q) #make all the datacards and workspaces
+        if options.doPerQuantile:
+            runCombine(q,outdir) # Run combine for each orthogonal quantiles separately
     
    if options.doCombination:
     logging.info("Running full combination")
-    runCombination(datacarddir=outdir, qacc=['q30', 'q50', 'q70', 'q90'])
+    runCombination(datacarddir=outdir, qacc=['q30', 'q50', 'q70', 'q90']) #Run combine for all the orthogonal quantiles combined
 
-   logging.info("Done! Find your results in ", outdir)
+   logging.info("Done! Find your results in %s"%outdir)
