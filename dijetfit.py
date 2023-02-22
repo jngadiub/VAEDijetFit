@@ -48,6 +48,7 @@ def makeData(options, dataFile, q, iq, quantiles, hdata, minMJJ=0, maxMJJ=1e+04)
 
    data = file['eventFeatures'][()] 
    mjj_idx = np.where(file['eventFeatureNames'][()] == 'mJJ')[0][0]
+   data = data[ (minMJJ < data[:,mjj_idx]) & (data[:,mjj_idx] < maxMJJ)]
 
    # if quantile = total, fill histogram with all data and return
    if q=='total':
@@ -103,9 +104,12 @@ if __name__ == "__main__":
    sig_res = options.sig_res
    out_dir = options.out_dir
    prepare_output_directory(out_dir, False)
-   binsx = [1200,1246,1313,1383,1455,1530,1607,1687,1770,1856,1945,2037,2132,2231,2332,2438,2546,2659,2775,2895,3019,3147,3279,3416,3558,3704,3854,4010,4171,4337,4509,4686,4869,5058,5253,5500,5663,5877,6099,6328,6564,6808]   #Current files have upper cut at 6100 (to be removed) 
-
-   binsx = [e for e in binsx]
+   binsx = [1313,1383,1455,1530,1607,1687,1770,1856,1945,2037,2132,2231,2332,2438,2546,2659,2775,2895,3019,3147,3279,3416,3558,3704,3854,4010,4171,4337,4509,4686,4869,5058,5253,5500,5663,5877,6099,6328,6564,6808]   #Current files have upper cut at 6100 (to be removed) 
+   #binsx = [1313,1383,1455,1530,1607,1687, # Reduced range to avoid turn-on
+   #                   1770,1856,1945,2037,2132,2231,2332,2438,
+   #                   2546,2659,2775,2895,3019,3147,3279,3416,
+   #                   3558,3704,3854,4010,4171,4337,4509,4686,
+   #                   4869,5058,5253]
    roobins = ROOT.RooBinning(len(binsx)-1, array('d',binsx), "mjjbins")
    bins_fine = int(binsx[-1]-binsx[0])
    #quantiles = ['q05', 'q10', 'q30', 'q50', 'q70', 'q100', 'total'] # For CASE -- most anomalous is q05
@@ -128,7 +132,8 @@ if __name__ == "__main__":
    qcd_xsec = 8.73e6 # [fb]
    qcd_gen_events = strc.get_gen_events('qcdAll')
    lumi = qcd_gen_events/qcd_xsec # lumi is ~ 64/fb
-   sig_gen_events = strc.get_gen_events(options.sigFile.replace('Reco.h5',''))
+   sig_gen_events = strc.get_gen_events(options.sigFile.replace('_%.1f.h5'%(options.xsec/1000.),''))
+   #sig_gen_events = strc.get_gen_events(options.sigFile.replace('Reco.h5',''))
    sig_xsec = options.xsec # unit is [fb]
  
    print " sig_xsec ",sig_xsec
@@ -150,10 +155,10 @@ if __name__ == "__main__":
       #Signal data preparation 
       for iq,q in enumerate(quantiles):
          
-         histos_sig.append( ROOT.TH1F("mjj_sig_%s"%q,"mjj_sig_%s"%q,len(bins_sig_fit)-1,bins_sig_fit) )
+         histos_sig.append( ROOT.TH1F("mjj_sig_%s"%q,"mjj_sig_%s"%q,len(bins_sig_fit)-1,bins_sig_fit ) )
          print
-         makeData(options,options.sigFile,q,iq,quantiles,histos_sig[-1],*sig_mjj_limits) #first fill orthogonal data histos
-         print "************ Found",histos_sig[-1].GetEntries(),"signal events for quantile",q
+         makeData(options,options.sigFile,q,iq,quantiles,histos_sig[-1],binsx[0],binsx[-1]) #first fill orthogonal data histos 
+         print "************ Found",histos_sig[-1].GetEntries(),"/",histos_sig[-1].Integral(),"signal events for quantile",q
          print
 
       #Background data preparation
@@ -161,8 +166,8 @@ if __name__ == "__main__":
       
          histos_qcd.append( ROOT.TH1F("mjj_qcd_%s"%q,"mjj_qcd_%s"%q,bins_fine,binsx[0],binsx[-1]) )
          print
-         makeData(options,options.qcdFile,q,iq,quantiles,histos_qcd[-1]) #first fill orthogonal data histos
-         print "************ Found",histos_qcd[-1].Integral(),"background events for quantile",q
+         makeData(options,options.qcdFile,q,iq,quantiles,histos_qcd[-1],binsx[0],binsx[-1]) #first fill orthogonal data histos
+         print "************ Found",histos_qcd[-1].GetEntries(),"/",histos_qcd[-1].Integral(),"background events for quantile",q
          print
 
       for h in histos_sig: h.SaveAs(os.path.join(out_dir, "data_"+h.GetName()+".root"))
@@ -188,18 +193,18 @@ if __name__ == "__main__":
          histos_qcd[-1].SetDirectory(ROOT.gROOT)
          q_datafile.Close()
         
-      for q,h in enumerate(histos_sig): print "************ Found",h.GetEntries(),"signal events for quantile",quantiles[q]
-      for q,h in enumerate(histos_qcd): print "************ Found",h.GetEntries(),"background events for quantile",quantiles[q]
+      for q,h in enumerate(histos_sig): print "************ Found",h.GetEntries(),"/",h.Integral(),"signal events for quantile",quantiles[q]
+      for q,h in enumerate(histos_qcd): print "************ Found",h.GetEntries(),"/",h.Integral(),"background events for quantile",quantiles[q]
 
    sum_n_histos_qcd = sum([h.GetEntries() for h in histos_qcd[:-1]])
    sum_n_histos_sig = sum([h.GetEntries() for h in histos_sig[:-1]])
 
    print "************************************************************************************** "
-   print "TOTAL SIGNAL EVENTS",histos_sig[-1].GetEntries(), " (sum histos = )", sum_n_histos_sig
-   print "TOTAL BACKGROUND EVENTS",histos_qcd[-1].GetEntries(), " (sum histos = )", sum_n_histos_qcd
+   print "TOTAL SIGNAL EVENTS",histos_sig[-1].GetEntries(),"/",histos_sig[-1].Integral(), " (sum histos = )", sum_n_histos_sig
+   print "TOTAL BACKGROUND EVENTS",histos_qcd[-1].GetEntries(),"/",histos_qcd[-1].Integral(), " (sum histos = )", sum_n_histos_qcd
    print
    print "************************************************************************************** "
-   
+
    ################################### NOW MAKE THE FITS ###################################
    '''
     for each quantile:
@@ -212,14 +217,20 @@ if __name__ == "__main__":
    best_i = [0]*len(quantiles)
    nPars_QCD = [0]*len(quantiles)
    qcd_fname = [0]*len(quantiles)
-   chi2s = [[0]*len(nParsToTry)]*len(quantiles)
-   ndofs = [[0]*len(nParsToTry)]*len(quantiles)
-   probs = [[0]*len(nParsToTry)]*len(quantiles)
-   qcd_fnames = [[""]*len(nParsToTry)]*len(quantiles)
+   #chi2s = [[0]*len(nParsToTry)]*len(quantiles)
+   #ndofs = [[0]*len(nParsToTry)]*len(quantiles)
+   #probs = [[0]*len(nParsToTry)]*len(quantiles)
+   #qcd_fnames = [[""]*len(nParsToTry)]*len(quantiles)
+   chi2s = [0]*len(quantiles)
+   ndofs = [0]*len(quantiles)
+   probs = [0]*len(quantiles)
+   #qcd_fnames = [""]*len(nParsToTry)
    dcb = True #use Double Crystal Ball for signal templates
 
    for iq,q in enumerate(quantiles):
       
+      #if q != 'q30': continue #JEN
+
       print "########## FIT SIGNAL AND SAVE PARAMETERS for quantile "+q+"    ############"
       sig_outfile = ROOT.TFile(os.path.join(out_dir, "sig_fit_%s.root"%q),"RECREATE")
 
@@ -243,7 +254,7 @@ if __name__ == "__main__":
 
       fitter.w.var("MH").setVal(mass)
       fitter.importBinnedData(histos_sig[iq],['mjj_fine'],'data')
-      fres = fitter.fit('model_s','data',[ROOT.RooFit.Save(1)])
+      fres = fitter.fit('model_s','data',[ROOT.RooFit.Save(1)],out_dir)
       fres.Print()
       print "**********************************************************************************************"
       print "signal fit result for quantile "+q
@@ -253,7 +264,7 @@ if __name__ == "__main__":
          print " FIT CONVERGED "
       else:
          print " FIT DIDN'T CONVERGE "
-         break
+         #break
       print "**********************************************************************************************"
 
       ### compute chi-square of compatibility of signal-histogram and signal model for sanity ch05eck
@@ -261,10 +272,10 @@ if __name__ == "__main__":
 
       mjj_fine = fitter.getVar('mjj_fine')
       mjj_fine.setBins(len(bins_sig_fit))
-      chi2_fine = fitter.projection("model_s","data","mjj_fine", os.path.join(out_dir, "signal_fit_%s.png"%q))
-      fitter.projection("model_s","data","mjj_fine", os.path.join(out_dir, "signal_fit_%s_log.png"%q), 0, True)
-      chi2 = fitter.projection("model_s","data","mjj_fine", os.path.join(out_dir, "signal_fit_%s_binned.png"%q), roobins_sig_fit)
-      fitter.projection("model_s","data","mjj_fine", os.path.join(out_dir, "signal_fit_%s_log_binned.png"%q), roobins_sig_fit, True)
+      chi2_fine = fitter.projection("model_s","data","mjj_fine", os.path.join(out_dir, "signal_fit_%s.png"%q), out_dir)
+      fitter.projection("model_s","data","mjj_fine", os.path.join(out_dir, "signal_fit_%s_log.png"%q), out_dir, 0, True)
+      chi2 = fitter.projection("model_s","data","mjj_fine", os.path.join(out_dir, "signal_fit_%s_binned.png"%q), out_dir, roobins_sig_fit)
+      fitter.projection("model_s","data","mjj_fine", os.path.join(out_dir, "signal_fit_%s_log_binned.png"%q), out_dir, roobins_sig_fit, True)
 
       # write signal histogram and model with params
 
@@ -308,7 +319,7 @@ if __name__ == "__main__":
       histos_sb_blind = []
       h = apply_blinding(histos_qcd[iq], ranges=fit_ranges)
       histos_sb_blind.append(h )
-      num_blind = histos_sb_blind[-1].Integral()
+      num_blind = histos_sb_blind[-1].GetEntries()
 
       if options.blinded:
          fitting_histogram = histos_sb_blind[-1]
@@ -321,24 +332,83 @@ if __name__ == "__main__":
          data_name = "data_qcd"
          fit_range = full_range
          chi2_range = None
-         norm = ROOT.RooFit.Normalization(histos_qcd[iq].Integral(),
+         norm = ROOT.RooFit.Normalization(histos_qcd[iq].GetEntries(),
                                         ROOT.RooAbsReal.NumEvent)
+
+      print "############# INJECT SIGNAL DATA GENERATING FROM SIGNAL PDF for quantile "+q+" ###########"
+      #QCD is taken from the histogram
+     
+      f = ROOT.TFile("/tmp/%s/cache%i.root"%(commands.getoutput("whoami"),random.randint(0, 1e+6)),"RECREATE")
+      f.cd()
+      w=ROOT.RooWorkspace("w","w")
+
+      # this is needed to get the right mjj observable (leave it)
+      fitter_QCD=Fitter(['mjj_fine'])
+      fitter_QCD.qcdShape('model_b','mjj_fine',2)
+      fitter_QCD.importBinnedData(histos_qcd[iq],['mjj_fine'],'data_qcd')
+      mjj = fitter_QCD.getVar('mjj_fine')
+      mjj.setBins(bins_fine)
+      ###
+
+      model_s = fitter.getFunc('model_s')      
+      model_s.Print("v")
+
+      print
+
+      # signal xsec set to 0 by default, so hdatasig hist not filled !
+      if sig_xsec != 0:     
+         num_sig_evts = int(histos_sig[iq].GetEntries()*sig_xsec*lumi/sig_gen_events) # histo integral already takes into account efficiency, lumi, and 1 pb xsec
+         print "Generate", num_sig_evts, "signal events!" 
+         if num_sig_evts > 0:
+            datasig = model_s.generateBinned(ROOT.RooArgSet(mjj),num_sig_evts)
+            hdatasig = datasig.createHistogram("mjj_fine")
+         else:
+            hdatasig = ROOT.TH1F("mjj_generate_sig_%s"%q,"mjj_generate_sig_%s"%q,histos_qcd[iq].GetNbinsX(),histos_qcd[iq].GetXaxis().GetXmin(),histos_qcd[iq].GetXaxis().GetXmax())
+      else: # just set same bins as qcd hist, do not fill!
+         print (" xsec is zero!")
+         hdatasig = ROOT.TH1F("mjj_generate_sig_%s"%q,"mjj_generate_sig_%s"%q,histos_qcd[iq].GetNbinsX(),histos_qcd[iq].GetXaxis().GetXmin(),histos_qcd[iq].GetXaxis().GetXmax())
+      print " ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"  
+      hdatasig.SetName("mjj_generate_sig_%s"%q)
+      
+      # signal+background fit (total histo) => since signal xsec = 0 per default, this is only background data & fit!
+
+      sb_outfile = ROOT.TFile(os.path.join(out_dir, 'sb_fit_%s.root'%q),'RECREATE')
+      sb_outfile.cd()
+      htot = ROOT.TH1F()
+      htot = histos_qcd[iq].Clone("mjj_generate_tot_%s"%q) #clone from qcd histo
+      htot.Add(hdatasig)
+      hdatasig.Write("mjj_generate_sig_%s"%q)
+      histos_qcd[iq].Write("mjj_generate_qcd_%s"%q)
+      htot.Write("mjj_generate_tot_%s"%q)
+
+      w.Delete()
+      f.Close()
+      f.Delete()
+      sb_outfile.Close()
+      fitter.delete()
+
+      print
+      print
+
+      qcd_fnames = []
+      nParsToTry_converged = []
+      chi2s[iq] = []
+      ndofs[iq] = []
+      probs[iq] = []
 
       for i, nPars in enumerate(nParsToTry):
          print("Trying %i parameter background fit" % nPars)
-         qcd_fnames[i] = str(nPars) + 'par_qcd_fit%i_quantile%s.root' % (i,q)
-
-         qcd_outfile = ROOT.TFile(os.path.join(out_dir, qcd_fnames[i]),'RECREATE')
 
          ### create background model: 2-parameter (p1 & p2) exponential (generic functional form, not based on data)
-
          fitter_QCD=Fitter(['mjj_fine'])
          fitter_QCD.qcdShape('model_b','mjj_fine',nPars)
 
          ### fit background model to actual qcd histogram data (all cuts applied)
+         sb_outfile = ROOT.TFile(os.path.join(out_dir, 'sb_fit_%s.root'%q),'READ')
+         my_histo = sb_outfile.Get("mjj_generate_tot_%s"%q)
 
-         fitter_QCD.importBinnedData(histos_qcd[iq],['mjj_fine'],'data_qcd')
-         fres = fitter_QCD.fit('model_b','data_qcd',[ROOT.RooFit.Save(1), ROOT.RooFit.Verbose(0), ROOT.RooFit.Minos(1)])
+         fitter_QCD.importBinnedData(my_histo,['mjj_fine'],'data_qcd')
+         fres = fitter_QCD.fit('model_b','data_qcd',[ROOT.RooFit.Save(1), ROOT.RooFit.Verbose(0), ROOT.RooFit.Minos(1)],out_dir)
          fres.Print()
          print "**********************************************************************************************"
          print "qcd fit result for quantile "+q+" and function parameters "+str(nPars)
@@ -346,17 +416,20 @@ if __name__ == "__main__":
          print " estimated distance to minimum ",fres.edm()
          if fres.edm() < 1.00e-03:
             print " FIT CONVERGED "
+            nParsToTry_converged.append(nPars)
          else:
             print " FIT DIDN'T CONVERGE "
             break
          print "**********************************************************************************************"
 
+         qcd_fnames.append(str(nPars) + 'par_qcd_fit%i_quantile%s.root' % (i,q))         
+         qcd_outfile = ROOT.TFile(os.path.join(out_dir, qcd_fnames[i]),'RECREATE')
 
          ### compute chi-square of compatibility of qcd-histogram and background model for sanity check
          # plot fit result to qcd_fit_q_binned.png for each quantile q
 
-         chi2_fine = fitter_QCD.projection("model_b","data_qcd","mjj_fine", os.path.join(out_dir, qcd_fnames[i].replace(".root",".png")), 0, True) # chi2 => sanity check
-         chi2_binned = fitter_QCD.projection("model_b","data_qcd","mjj_fine", os.path.join(out_dir, qcd_fnames[i].replace(".root","_binned.png")), roobins, True)
+         chi2_fine = fitter_QCD.projection("model_b","data_qcd","mjj_fine", os.path.join(out_dir, qcd_fnames[i].replace(".root",".png")), out_dir, 0, True) # chi2 => sanity check
+         chi2_binned = fitter_QCD.projection("model_b","data_qcd","mjj_fine", os.path.join(out_dir, qcd_fnames[i].replace(".root","_binned.png")), out_dir, roobins, True)
 
          ### write background histogram
 
@@ -431,71 +504,31 @@ if __name__ == "__main__":
          print("My chi2, ndof, prob", my_chi2, my_ndof, my_prob)
          print("My chi/ndof, chi2/nbins", my_chi2/my_ndof, my_chi2/(my_ndof + nPars)) #the different between custom and RooFit chi2 is that RooFit uses ndof = nbins instead of ndof=nbins-npars
          print("#############################")
-
-         chi2s[iq][i] = my_chi2
-         ndofs[iq][i] = my_ndof
-         probs[iq][i] = my_prob
+         
+         chi2s[iq].append(my_chi2)
+         ndofs[iq].append(my_ndof)
+         probs[iq].append(my_prob)
+         #chi2s[iq][i] = my_chi2
+         #ndofs[iq][i] = my_ndof
+         #probs[iq][i] = my_prob
          fitter_QCD.delete()
-
-      best_i[iq] = f_test(nParsToTry, ndofs[iq], chi2s[iq])
-      nPars_QCD[iq] = nParsToTry[best_i[iq]]
+      
+      print(nParsToTry)
+      print(nParsToTry_converged)
+      print(ndofs)
+      print(ndofs[iq])
+      print(chi2s)
+      print(chi2s[iq])
+      print(best_i[iq])
+      best_i[iq] = f_test(nParsToTry_converged, ndofs[iq], chi2s[iq])
+      nPars_QCD[iq] = nParsToTry_converged[best_i[iq]]
       qcd_fname[iq] = qcd_fnames[best_i[iq]]
       print ( " qcd_fname[iq] ",qcd_fname[iq])
       print("\n Chose %i parameters based on F-test ! \n" % nPars_QCD[iq])
 
       print
       print 
-      print "############# INJECT SIGNAL DATA GENERATING FROM SIGNAL PDF for quantile "+q+" ###########"
-      #QCD is taken from the histogram
-     
-      f = ROOT.TFile("/tmp/%s/cache%i.root"%(commands.getoutput("whoami"),random.randint(0, 1e+6)),"RECREATE")
-      f.cd()
-      w=ROOT.RooWorkspace("w","w")
 
-      # this is needed to get the right mjj observable (leave it)
-      fitter_QCD=Fitter(['mjj_fine'])
-      fitter_QCD.qcdShape('model_b','mjj_fine',nPars_QCD[iq])
-      fitter_QCD.importBinnedData(histos_qcd[iq],['mjj_fine'],'data_qcd')
-      mjj = fitter_QCD.getVar('mjj_fine')
-      mjj.setBins(bins_fine)
-      ###
-
-      model_s = fitter.getFunc('model_s')      
-      model_s.Print("v")
-
-      print
-
-      # signal xsec set to 0 by default, so hdatasig hist not filled !
-      if sig_xsec != 0:     
-         num_sig_evts = int(histos_sig[iq].Integral()*sig_xsec*lumi/sig_gen_events) # histo integral already takes into account efficiency, lumi, and 1 pb xsec
-         print "Generate", num_sig_evts, "signal events!" 
-         if num_sig_evts > 0:
-            datasig = model_s.generateBinned(ROOT.RooArgSet(mjj),num_sig_evts)
-            hdatasig = datasig.createHistogram("mjj_fine")
-         else:
-            hdatasig = ROOT.TH1F("mjj_generate_sig_%s"%q,"mjj_generate_sig_%s"%q,histos_qcd[iq].GetNbinsX(),histos_qcd[iq].GetXaxis().GetXmin(),histos_qcd[iq].GetXaxis().GetXmax())
-      else: # just set same bins as qcd hist, do not fill!
-         print (" xsec is zero!")
-         hdatasig = ROOT.TH1F("mjj_generate_sig_%s"%q,"mjj_generate_sig_%s"%q,histos_qcd[iq].GetNbinsX(),histos_qcd[iq].GetXaxis().GetXmin(),histos_qcd[iq].GetXaxis().GetXmax())
-      print " ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"  
-      hdatasig.SetName("mjj_generate_sig_%s"%q)
-      
-      # signal+background fit (total histo) => since signal xsec = 0 per default, this is only background data & fit!
-
-      sb_outfile = ROOT.TFile(os.path.join(out_dir, 'sb_fit_%s.root'%q),'RECREATE')
-      sb_outfile.cd()
-      htot = ROOT.TH1F()
-      htot = histos_qcd[iq].Clone("mjj_generate_tot_%s"%q) #clone from qcd histo
-      htot.Add(hdatasig)
-      hdatasig.Write("mjj_generate_sig_%s"%q)
-      histos_qcd[iq].Write("mjj_generate_qcd_%s"%q)
-      htot.Write("mjj_generate_tot_%s"%q)
-
-      w.Delete()
-      f.Close()
-      f.Delete()
-      sb_outfile.Close()
-      fitter.delete()
 
       print
       print
@@ -508,13 +541,13 @@ if __name__ == "__main__":
       
       ### !!! compute amount of signal to be injected 
            
-      if sig_xsec==0: constant = 0.001 #1.0 # might give too large yields for combine to converge ???
+      if sig_xsec==0: constant = 0.001 # might give too large yields for combine to converge ???
       else: constant = sig_xsec*lumi/sig_gen_events  #scaling factor to signal histo integral used by addFixedYieldFromFile --> should return r=1 in FitDiagnostics
       print " constant = scaling factor to signal integral generated with 1 pb = 1000 fb xsec = ",constant
       # add signal pdf from model_s, taking integral number of events with constant scaling factor for sig
       card.addFixedYieldFromFile('model_signal_mjj',0, os.path.join(out_dir, 'sig_fit_%s.root'%q), histos_sig[iq].GetName(), constant=constant)
       card.addSystematic("CMS_scale_j","param",[0.0,0.012])
-      card.addSystematic("CMS_res_j","param",[0.0,0.08])  
+      card.addSystematic("CMS_res_j","param",[0.0,0.08])    
 
       # add bg pdf
       card.addQCDShapeNoTag('model_qcd_mjj','mjj', os.path.join(out_dir, qcd_fname[iq]), nPars_QCD[iq])
@@ -544,6 +577,8 @@ if __name__ == "__main__":
       checkSBFit('{out_dir}/workspace_JJ_{xsec}_{label}.root'.format(out_dir=out_dir, xsec=sig_xsec,label=q),q,roobins,histos_qcd[iq].GetName()+"_M{mass}_xsec{xsec}.root".format(mass=mass,xsec=sig_xsec), nPars_QCD[iq], out_dir)
       print " %%%%%%%%%%%%%%%%%%%%%%%% done with quantile ",q
    
+   #sys.exit() #JEN
+
    print "------------------------------------------------- F-TEST result -------------------------------------------------"
    for iq,q in enumerate(quantiles):
       print " for quantile ",q," chosen ", nPars_QCD[iq]," parameter function"
@@ -561,11 +596,10 @@ if __name__ == "__main__":
    if options.correlateB == True:
       for i,p in enumerate(nPars_QCD):
          if p != nPars_QCD[0]:
-            print("JENNIFER",qcd_fname[i], qcd_fname[0].split("_")[-1],qcd_fname[i].split("_")[-1])
-            qcd_fname[i] =  qcd_fname[0].replace( qcd_fname[0].split("_")[-1], qcd_fname[i].split("_")[-1])
-            print("AFTER",qcd_fname[i])
+            print("Names before replacing",qcd_fname[i], qcd_fname[0].split("_")[-1],qcd_fname[i].split("_")[-1])
+            if not 'total' in qcd_fname[i]: qcd_fname[i] =  qcd_fname[0].replace( qcd_fname[0].split("_")[-1], qcd_fname[i].split("_")[-1])
+            print("Names after replacing",qcd_fname[i])
 
-   print(qcd_fname)
    for iq,q in enumerate(quantiles):  
    
       if q == 'total': continue
@@ -584,7 +618,8 @@ if __name__ == "__main__":
          #TAKE BACKGROUND SHAPE COMES FROM BACKGROUND-ENRICHED QUANTILE SLICE --> WHICH ONE? TRY THE Q0 SLICE!
          print "============================== IMPLEMENTING FULL CORRELATION AMONG CATEGORIES !!!"
          card.addQCDShapeNoTag('model_qcd_mjj','mjj', os.path.join(out_dir, qcd_fname[0]), nPars_QCD[0])
-         card.addFloatingYieldCorr('model_qcd_mjj',1, os.path.join(out_dir, qcd_fname[iq]), "mjj_qcd_%s"%q,fractions[iq]) #JEN CHANGE BACK TO: histos_qcd[iq].GetName()
+         if q=='q0': card.addFloatingYield('model_qcd_mjj',1, os.path.join(out_dir, qcd_fname[iq]), histos_qcd[iq].GetName())
+         else: card.addFloatingYieldCorr('model_qcd_mjj',1, os.path.join(out_dir, qcd_fname[iq]), "mjj_qcd_%s"%q,fractions[iq], constant=histos_qcd[0].GetEntries())
          for i in range(1,nPars_QCD[0]+1): card.addSystematic("CMS_JJ_p%i"%i,"flatParam",[])
          card.addSystematic("shapeBkg_model_qcd_mjj_JJ_q0__norm","flatParam",[])
       else:   
