@@ -233,5 +233,5 @@ if __name__ == "__main__":
     print ypvalue
    
     plotPValue(xsec, quantiles + ['final'], labels + ['AD bump hunt'], run_str, out_dir=out_dir)
-    print("NOT CHECK OUTPUT FOLDER",out_dir)
+    print("CHECK OUTPUT FOLDER",out_dir)
   
