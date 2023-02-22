@@ -15,6 +15,7 @@ def get_gen_events(sample=""):
 	'GtoWW25na' : 983609,
 	'GtoWW25br' : 982588,
 	'GtoWW35na' : 982038,
+	'signal_grav_3p5_narrow': 982038,
 	'GtoWW35br' : 972050,
 	'GtoWW45na' : 976979,
 	'GtoWW45br' : 969741,
@@ -24,7 +25,7 @@ def get_gen_events(sample=""):
 	'AtoHZ45' : 99954,
 	}
 
-	if sample=='qcdAll':
+	if sample=='qcdAll' or 'bkg' in sample or 'data' in sample:
 		return gen_events_number_dir['qcdSide']+gen_events_number_dir['qcdSig']+gen_events_number_dir['qcdSideExt']+gen_events_number_dir['qcdSigExt']
 	else:
 		return gen_events_number_dir[sample]

@@ -40,8 +40,12 @@ def get_canvas(cname):
 
     return canvas
     
-def make_run_str(sig_name, sig_xsec=10, run_n=0, loss_id='rk5'):
-    return '_' + sig_name[:-3] + '_xsec' + str(sig_xsec) + '_run' + str(run_n) + '_loss_' + loss_id 
+def make_run_str(sig_name, sig_xsec=10, qr_run_n=0):
+    return '_' + sig_name[:-3] + '_xsec' + str(sig_xsec) + '_qr' + str(qr_run_n)
+
+
+def get_xsec_scan_from_injection(xsec_in_training, step=20):
+  return list(range(0,xsec_in_training+1,step))
 
 def get_xsec_scan(filename):
 
@@ -578,6 +582,9 @@ def checkSBFit(filename,label,roobins,plotname, nPars, plot_dir):
 
 
 def f_test(nParams, nDof, chi2, thresh = 0.05):
+    if len(nParams) == 1:
+      print('only one parameter setting for background fit provided. Not running f-test. Returning the only parameter')
+      return 0
     #assumes arrays are in increasing number of params order (ie nParams[0] is minimum number of params)
     print  "\n\n #################### STARTING F TEST #######################" 
     best_i = 0

@@ -13,6 +13,7 @@
  "RSGraviton_WW_NARROW_13TeV_PU40_4.0TeV":[980061,100,[]],
  "RSGraviton_WW_NARROW_13TeV_PU40_4.5TeV":[976979,100,[0.0,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1]],
  "GtoWW35naReco":[982038,100,[0.0,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1]],
+ "signal_grav_3p5_narrow":[982038,100,[0.0,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1]],
  "Vjets_allhad_highpt_13TeV_PU40":[2067583,293,[]],
  "XXproduction_Xto2q_13TeV_PU40":[705335,98,[]],
  "XXproduction_Xto2q_13TeV_PU40_SIDEBAND":[705335,98,[]],
@@ -21,4 +22,5 @@
  "qcd_sqrtshatTeV_13TeV_PU40_EXT_SIDEBAND":[90490645,1160,[]],
  "qcd_sqrtshatTeV_13TeV_PU40_SIDEBAND":[134366091,2117,[]],
  "qcdSigAll":[333699467,2117,[]],
+ "bkg_grav_3p5_narrow":[333699467,2117,[]],
  "ttbar_highpt_13TeV_PU40":[714545,99,[]]}

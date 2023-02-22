@@ -81,7 +81,7 @@ def prepare_output_directory(out_dir, clean_up=True):
     
 if __name__ == "__main__":
 
-   #python dijetfit.py -i inputdir --sig RSGraviton_WW_NARROW_13TeV_PU40_3.5TeV_parts/RSGraviton_WW_NARROW_13TeV_PU40_3.5TeV_reco.h5 --qcd qcd_sqrtshatTeV_13TeV_PU40_ALL_parts/qcd_sqrtshatTeV_13TeV_PU40_ALL_reco.h5
+   #python dijetfit.py -i /eos/user/k/kiwoznia/data/QR_results/events/qr_run_6160/env_run_0/poly_run_0/ --sig GtoWW35naReco.h5 --qcd qcdSigAll.h5 --xsec 100 -M 3500
    #python dijetfit.py -i inputdir --sig RSGraviton_WW_NARROW_13TeV_PU40_1.5TeV_parts/RSGraviton_WW_NARROW_13TeV_PU40_1.5TeV_reco.h5 --qcd qcd_sqrtshatTeV_13TeV_PU40_ALL_parts/qcd_sqrtshatTeV_13TeV_PU40_ALL_reco.h5 --xsec 0.0 -M 1500.0
 
    #some configuration
@@ -141,7 +141,7 @@ if __name__ == "__main__":
    ################################### FIRST PREPARE DATA ###################################
    '''
     MAKE HISTOGRAMS:
-    for each quantile + 'bottom rejected' 10% + all events:
+    for each quantile + 'bottom rejected' 30% + all events:
       fill mjj histogram for 
       - signal: histos_sig
       - background: histos_qcd
@@ -213,7 +213,7 @@ if __name__ == "__main__":
       - chi2 ??
    ''' 
 
-   nParsToTry = [2, 3, 4]
+   nParsToTry = [2, 3] #[2, 3, 4]
    best_i = [0]*len(quantiles)
    nPars_QCD = [0]*len(quantiles)
    qcd_fname = [0]*len(quantiles)
@@ -227,6 +227,7 @@ if __name__ == "__main__":
    #qcd_fnames = [""]*len(nParsToTry)
    dcb = True #use Double Crystal Ball for signal templates
 
+   total_generated_sig_events = 0
    for iq,q in enumerate(quantiles):
       
       #if q != 'q30': continue #JEN
@@ -528,6 +529,44 @@ if __name__ == "__main__":
 
       print
       print 
+      print "############# INJECT SIGNAL DATA GENERATING FROM SIGNAL PDF for quantile "+q+" ###########"
+      #QCD is taken from the histogram
+      f = ROOT.TFile("/tmp/%s/cache%i.root"%(commands.getoutput("whoami"),random.randint(0, 1e+6)),"RECREATE")
+      f.cd()
+      w=ROOT.RooWorkspace("w","w")
+
+      # this is needed to get the right mjj observable (leave it)
+      fitter_QCD=Fitter(['mjj_fine'])
+      fitter_QCD.qcdShape('model_b','mjj_fine',nPars_QCD[iq])
+      fitter_QCD.importBinnedData(histos_qcd[iq],['mjj_fine'],'data_qcd')
+      mjj = fitter_QCD.getVar('mjj_fine')
+      mjj.setBins(bins_fine)
+      ###
+
+      model_s = fitter.getFunc('model_s')      
+      model_s.Print("v")
+
+      print
+
+      # signal xsec set to 0 by default, so hdatasig hist not filled !
+      if sig_xsec != 0:
+         # import ipdb; ipdb.set_trace()
+         num_sig_evts = int(histos_sig[iq].GetEntries()*sig_xsec*lumi/sig_gen_events) # histo integral already takes into account efficiency, lumi, and 1 pb xsec
+         if q != 'total': 
+            total_generated_sig_events += num_sig_evts
+         print "Generate", num_sig_evts, "signal events!" 
+         if num_sig_evts > 0:
+            datasig = model_s.generateBinned(ROOT.RooArgSet(mjj),num_sig_evts)
+            hdatasig = datasig.createHistogram("mjj_fine")
+         else:
+            hdatasig = ROOT.TH1F("mjj_generate_sig_%s"%q,"mjj_generate_sig_%s"%q,histos_qcd[iq].GetNbinsX(),histos_qcd[iq].GetXaxis().GetXmin(),histos_qcd[iq].GetXaxis().GetXmax())
+      else: # just set same bins as qcd hist, do not fill!
+         print (" xsec is zero!")
+         hdatasig = ROOT.TH1F("mjj_generate_sig_%s"%q,"mjj_generate_sig_%s"%q,histos_qcd[iq].GetNbinsX(),histos_qcd[iq].GetXaxis().GetXmin(),histos_qcd[iq].GetXaxis().GetXmax())
+      print " ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"  
+      hdatasig.SetName("mjj_generate_sig_%s"%q)
+      
+      # signal+background fit (total histo) => since signal xsec = 0 per default, this is only background data & fit!
 
 
       print
@@ -577,7 +616,8 @@ if __name__ == "__main__":
       checkSBFit('{out_dir}/workspace_JJ_{xsec}_{label}.root'.format(out_dir=out_dir, xsec=sig_xsec,label=q),q,roobins,histos_qcd[iq].GetName()+"_M{mass}_xsec{xsec}.root".format(mass=mass,xsec=sig_xsec), nPars_QCD[iq], out_dir)
       print " %%%%%%%%%%%%%%%%%%%%%%%% done with quantile ",q
    
-   #sys.exit() #JEN
+   # end of data-prep quantile loop
+   print('sum of generated signal events across all quantiles '+ str(total_generated_sig_events))
 
    print "------------------------------------------------- F-TEST result -------------------------------------------------"
    for iq,q in enumerate(quantiles):

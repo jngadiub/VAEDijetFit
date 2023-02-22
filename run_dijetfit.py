@@ -2,6 +2,8 @@ import os,sys,time
 import numpy as np
 from array import array
 import optparse, json
+import re
+import pathlib
 
 import ROOT
 import CMS_lumi, tdrstyle
@@ -110,30 +112,29 @@ def plotPValue(xsec_scan, quantiles, labels, plot_name_suffix='', out_dir=''):
 
 if __name__ == "__main__":
 
-    #python run_dijetfit.py --run --i inputdir -M 1500 --sig RSGraviton_WW_NARROW_13TeV_PU40_1.5TeV_parts/RSGraviton_WW_NARROW_13TeV_PU40_1.5TeV_reco.h5 --qcd qcd_sqrtshatTeV_13TeV_PU40_ALL_parts/qcd_sqrtshatTeV_13TeV_PU40_ALL_reco.h5
+    #python run_dijetfit.py -i /eos/user/k/kiwoznia/data/QR_results/events/qr_run_6160/env_run_0/poly_run_0/ --sig GtoWW35naReco.h5 --qcd qcdSigAll.h5 --xsec 100 -M 3500 --res na -C
 
     parser = optparse.OptionParser()
-    parser.add_option("--run","--run", dest="run", default=False, action="store_true", help="Run scan")
-    parser.add_option("-n","-n",dest="run_n", type=int, default=0, help="Experiment number")
+    parser.add_option("--plot", dest="plot", default=False, action="store_true", help="Plot only (no scan)")
     parser.add_option("-M","-M", dest="mass", type=float, default=3500., help="Injected signal mass")
     parser.add_option("-i","--inputDir",dest="inputDir", default='./', help="directory with all quantiles h5 files")
     parser.add_option("--qcd","--qcd", dest="qcdFile", default='qcd.h5', help="QCD h5 file")
     parser.add_option("--sig","--sig", dest="sigFile", default='signal.h5', help="Signal h5 file")
-    parser.add_option("-x", "--sigxsec", dest="sigXsec", default=10, help="true signal cross-section")
+    parser.add_option("--xsec", "--sigxsec", type=int, dest="sigXsec", default=100, help="true signal cross-section")
     parser.add_option("--res", "--res", dest="sigRes", type="choice", choices=("na", "br"), default="na", help="resonance type: narrow [na] or broad [br]")
-    parser.add_option("-l", "--loss", dest="lossId", type=str, default="rk5_10", help="loss combination strategy")
+    parser.add_option('-C', dest="correlateB",action="store_true",help="Coorelate background shape among quantiles")
     (options,args) = parser.parse_args()
 
-    run = options.run
     mass = options.mass
     sigFile = options.sigFile
     qcdFile = options.qcdFile
     inputDir = options.inputDir
     sigRes = options.sigRes
-    xsec = np.array(get_xsec_scan(options.sigFile)) # pb
+    qr_run = re.findall(r'qr_run_(\d+)',options.inputDir)[0]
+    xsec = np.array(get_xsec_scan_from_injection(options.sigXsec)).astype('float') # pb
 
     # distinctive run string
-    run_str = make_run_str(sig_name=options.sigFile, sig_xsec=options.sigXsec, run_n=options.run_n, loss_id=options.lossId)
+    run_str = make_run_str(sig_name=options.sigFile, sig_xsec=options.sigXsec, qr_run_n=qr_run)
     out_dir = run_str[1:]
     os.system('mkdir %s'%out_dir)
     print(run_str[1:])
@@ -142,11 +143,11 @@ if __name__ == "__main__":
         print "ERROR: set the cross sections to scan for signal",sigFile,"in the files_count.json file!"
         sys.exit()
 
-    quantiles = ['q05', 'q10', 'q30', 'q50', 'q70', 'q100', 'total']
-    labels = ['q:0-5%','q:5-10%','q:10-30%','q:30-50%','q:50-70%','q:70-100%','bump hunt']
+    quantiles = ['q0', 'q30', 'q50', 'q70', 'q90', 'total']
+    labels = ['q:0-30%','q:30-50%','q:50-70%','q:70-90%','q:90-100%','bump hunt']
 
     #if you have already run the scan, results are saved in txt files 
-    if run == 0:
+    if options.plot:
         plotPValue(xsec, quantiles + ['final'], labels + ['AD bump hunt'], run_str, out_dir=out_dir)
         print("NOT CHECK OUTPUT FOLDER",out_dir)
         sys.exit()
@@ -165,7 +166,9 @@ if __name__ == "__main__":
 
         cmd = "python dijetfit.py -i {inputdir} --sig {sigfile} --qcd {qcdfile} --xsec {xsec} -M {mass} --res {res} --out {out_dir}".format(inputdir=inputDir, xsec=x, sigfile=sigFile, qcdfile=qcdFile, mass=mass, res=sigRes, out_dir=out_dir)
         if x!=0: cmd+=' -l' #assuming first xsec is zero so after that you can load input data with option -l
+        if options.correlateB == True: cmd += ' -C'
         print cmd
+        # import ipdb; ipdb.set_trace()
         os.system(cmd)
 
         for iq,q in enumerate(quantiles):
@@ -230,5 +233,5 @@ if __name__ == "__main__":
     print ypvalue
    
     plotPValue(xsec, quantiles + ['final'], labels + ['AD bump hunt'], run_str, out_dir=out_dir)
-    print("NOT CHECK OUTPUT FOLDER",out_dir)
+    print("CHECK OUTPUT FOLDER",out_dir)
   

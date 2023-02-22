@@ -70,7 +70,7 @@ class Fitter(object):
     def getW(self):
         return self.w
                     
-    def fit(self,model = "model",data="data",options=[]):
+    def fit(self,model = "model",data="data",options=[],outdir="./"):
         if len(options)==0:
             fitresults = self.w.pdf(model).fitTo(self.w.data(data))
         if len(options)==1:
@@ -84,7 +84,7 @@ class Fitter(object):
           
         if fitresults:
             fitresults.Print() 
-            f = ROOT.TFile.Open('fitresults.root','RECREATE')
+            f = ROOT.TFile.Open(outdir+'/fitresults.root','RECREATE')
             fitresults.SetName("fitresults")
             fitresults.Write()
             f.Close()   
@@ -103,14 +103,14 @@ class Fitter(object):
         self.legend.SetMargin(0.35)
         return self.legend
     
-    def projection(self,model = "model",data="data",poi="x",filename="fit.root",binning=0,logy=False,xtitle='x',mass=1000):
+    def projection(self,model = "model",data="data",poi="x",filename="fit.root",outdir="./",binning=0,logy=False,xtitle='x',mass=1000):
         
         self.frame=self.w.var(poi).frame()
     
         print "Printing workspace: "
         self.w.Print()
     
-        f = ROOT.TFile.Open("fitresults.root",'READ')
+        f = ROOT.TFile.Open(outdir+"/fitresults.root",'READ')
         if f: fr = f.Get('fitresults')
         else:
              fr = 0
