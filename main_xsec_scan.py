@@ -5,12 +5,12 @@ import pathlib2 as pathli  # python 2 backport
 import os
 import ROOT
 from collections import defaultdict
-from util_plotting import *
+from util_plotting import plot_pvalue_scan, plot_pvalue_bumphunt_and_gof
 
 
 if __name__ == "__main__":
 
-    #python main_xsec_scan.py -M 3500 --sig GtoWW35naReco.h5 --qcd qcdSigAll.h5 --res na -C --plt --gof --pltgof
+    #python main_xsec_scan.py -M 3500 --sig GtoWW35naReco.h5 --qcd qcdSigAll.h5 --res na -C --bump --gof
 
     parser = optparse.OptionParser()
     parser.add_option("-M","-M", dest="mass", type=float, default=3500., help="Injected signal mass")
@@ -19,9 +19,8 @@ if __name__ == "__main__":
     parser.add_option("--res", "--res", dest="sigRes", type="choice", choices=("na", "br"), default="na", help="resonance type: narrow [na] or broad [br]")
     parser.add_option('-C', dest="correlateB",action="store_true",help="Coorelate background shape among quantiles")
     parser.add_option('--signi', dest='signi',action='store_true', help='run only the significance tests')
-    parser.add_option('--plt', dest='plt_only',action='store_true', help='plot only xsec scan results')
+    parser.add_option('--bump', dest='do_bump',action='store_true', help='run dijetfit')
     parser.add_option('--gof', dest='do_gof',action='store_true', help='run the goodness of fit test')
-    parser.add_option('--pltgof', dest='plt_gof',action='store_true', help='plot gof xsec scan results')
     (opts,args) = parser.parse_args()
 
 
@@ -40,7 +39,14 @@ if __name__ == "__main__":
     out_dir_base = opts.sigFile[:-len('Reco.h5')]
     pathli.Path(out_dir_base).mkdir(parents=True, exist_ok=True)
 
-    if not opts.plt_only:
+    quantiles_bump = quantiles[:-1] + ['final'] + [quantiles[-1]]
+    labels_bump = labels[:-1] + ['AD bump hunt'] + [labels[-1]]
+    # GOF does not have pvalues for q0-30 because is serves as template and no 'total' quantile
+    quantiles_gof = quantiles[1:-1]+['combo']
+    lables_gof = labels[1:-1]+['GOF combo']
+
+
+    if opts.do_bump:
 
         # open the outfiles, ysig and ypvalue datastructs to collect results across xsecs for each quantile
         outfiles = {q: open('{}/results_{}.txt'.format(out_dir_base,q),'w') for q in quantiles}
@@ -139,16 +145,14 @@ if __name__ == "__main__":
         print ysig
         print ypvalue
 
-    # end if not plot only
+    # end if do_bump
 
-    plotPValue(list(dd.keys()), quantiles + ['final'], labels + ['AD bump hunt'], '_'.join([str(qr) for qr in dd.values()]), out_dir=out_dir_base)
+    plot_pvalue_scan(list(dd.keys()), quantiles_bump, labels_bump, '_'.join(['bumphunt']+[str(qr) for qr in dd.values()]), out_dir=out_dir_base)
     print("CHECK OUTPUT FOLDER",out_dir_base)
 
     # ****************************************************
     #                       GOF
     # ****************************************************
-
-    # GOF does not have pvalues for q0-30 because is serves as template and no 'total' quantile
 
     if opts.do_gof is True:
 
@@ -182,14 +186,19 @@ if __name__ == "__main__":
         # end for each xsec
 
         # open the quantile outfiles and write p-value for all cross sections
-        outfiles = {q: open('{}/gof_results_{}.txt'.format(out_dir_base,q),'w') for q in quantiles[1:-1]+['combo']}
-        for q in quantiles[1:-1]+['combo']:
+        outfiles = {q: open('{}/gof_results_{}.txt'.format(out_dir_base,q),'w') for q in quantiles_gof}
+        for q in quantiles_gof:
             for xi,xsec in enumerate(dd.keys()):
                 outfiles[q].write('{xsec}\t{pvalue}\n'.format(xsec=xsec,pvalue=ypvalue[q][xi]))
 
-        for q in quantiles[1:-1]+['combo']: outfiles[q].close()
+        for q in quantiles_gof: outfiles[q].close()
 
-    if opts.plt_gof:
-        # plot pvalues gof
-        plotPValue(list(dd.keys()), quantiles[1:-1] + ['combo'], labels[1:-1] + ['GOF combo'], '_'.join(['GOF']+[str(qr) for qr in dd.values()]), out_dir=out_dir_base, for_gof=True)    
+    # plot pvalues gof
+    plot_pvalue_scan(list(dd.keys()), quantiles_gof, lables_gof, '_'.join(['GOF']+[str(qr) for qr in dd.values()]), out_dir=out_dir_base, for_gof=True)    
 
+
+    # ****************************************************
+    #       plot all results together (dijetfit & gof)
+    # ****************************************************
+
+    plot_pvalue_bumphunt_and_gof(list(dd.keys()), quantiles_bump, quantiles_gof, labels_bump, lables_gof, plot_name_suffix='_'.join([str(qr) for qr in dd.values()]), out_dir=out_dir_base)
