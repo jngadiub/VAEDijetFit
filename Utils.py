@@ -199,7 +199,15 @@ def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_names,chi2,ndof,canvn
         legend.AddEntry(frame.findObject(pdf_names[0]),"%i par. background fit"%nPars,"l")
 
     else: 
-        legend.AddEntry(frame.findObject(pdf_names[0]),"Signal + Background Fit ","l")
+        legend.AddEntry(frame.findObject(pdf_names[1]),"Signal Fit ","l")
+        legend.AddEntry(frame.findObject(pdf_names[2]),"Background Fit (%i pars)"%nPars,"l")
+        legend.AddEntry(frame.findObject(pdf_names[0]),"Signal + Background Fit","l")       
+    legend2.AddEntry("","","")
+    legend2.AddEntry("","","")
+    legend2.AddEntry("","","")
+    legend2.AddEntry("","","")
+    legend2.AddEntry("","","")
+    legend2.AddEntry("","","")
     legend2.AddEntry("","","")
     legend2.AddEntry("","","")
     legend2.AddEntry("","","")
@@ -533,7 +541,7 @@ def checkSBFit(filename,label,roobins,plotname, nPars, plot_dir):
 
     
     fres = model.fitTo(data,ROOT.RooFit.SumW2Error(1),ROOT.RooFit.Minos(0),ROOT.RooFit.Verbose(0),ROOT.RooFit.Save(1),ROOT.RooFit.NumCPU(8)) 
-    #fres.Print()
+    fres.Print()
     
     frame = var.frame()
     
@@ -542,6 +550,8 @@ def checkSBFit(filename,label,roobins,plotname, nPars, plot_dir):
     model.getPdf('JJ_%s'%label).plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kRed-7),ROOT.RooFit.LineColor(ROOT.kRed-7),ROOT.RooFit.Name(fres.GetName()),
             fit_norm)
     model.getPdf('JJ_%s'%label).plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed+1),ROOT.RooFit.Name("model_s"), fit_norm)
+    model.getPdf('JJ_%s'%label).plotOn(frame,ROOT.RooFit.Components("shapeSig_model_signal_mjj_JJ_%s"%label), ROOT.RooFit.LineColor(ROOT.kBlue),ROOT.RooFit.Name("Signal"), fit_norm)
+    model.getPdf('JJ_%s'%label).plotOn(frame,ROOT.RooFit.Components("shapeBkg_model_qcd_mjj_JJ_%s"%label), ROOT.RooFit.LineColor(ROOT.kMagenta + 3),ROOT.RooFit.Name("Background"), fit_norm)
 
     #model_qcd.plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kGreen-7),ROOT.RooFit.LineColor(ROOT.kGreen-7), ROOT.RooFit.Name("Background"))
     #model_qcd.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed+1),ROOT.RooFit.Name("Background"))
@@ -570,8 +580,8 @@ def checkSBFit(filename,label,roobins,plotname, nPars, plot_dir):
 
     #chi2,ndof = calculateChi2(hpull, nPars +1)
 
-    pdf_names = ["model_s"] 
-    PlotFitResults(frame,fres.GetName(),nPars+1,frame3,"data_obs", pdf_names,chi2,ndof,'sbFit_'+plotname, plot_dir, has_sig = True)
+    pdf_names = ["model_s","Signal","Background"] 
+    PlotFitResults(frame,fres.GetName(),nPars,frame3,"data_obs", pdf_names,chi2,ndof,'sbFit_'+plotname, plot_dir, has_sig = True)
 
     print "chi2,ndof are", chi2, ndof
     return chi2, ndof
@@ -668,6 +678,8 @@ def checkSBFitFinal(filename,label,roobins,plotname, nPars, plot_dir):
     model_sb_ShapeBpS_1cat.plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kRed-7),ROOT.RooFit.LineColor(ROOT.kRed-7),ROOT.RooFit.Name(fres.GetName()),
             fit_norm)
     model_sb_ShapeBpS_1cat.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed+1),ROOT.RooFit.Name("model_s"), fit_norm)
+    model_sb_ShapeSig_1cat.plotOn(frame,ROOT.RooFit.Components("shapeSig_model_signal_mjj_JJ_%s"%label), ROOT.RooFit.LineColor(ROOT.kBlue),ROOT.RooFit.Name("Signal"), fit_norm)
+    model_bonly_1cat.plotOn(frame,ROOT.RooFit.Components("shapeBkg_model_qcd_mjj_JJ_%s"%label), ROOT.RooFit.LineColor(ROOT.kMagenta + 3),ROOT.RooFit.Name("Background"), fit_norm)
 
     #model_qcd.plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kGreen-7),ROOT.RooFit.LineColor(ROOT.kGreen-7), ROOT.RooFit.Name("Background"))
     #model_qcd.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed+1),ROOT.RooFit.Name("Background"))
@@ -693,8 +705,8 @@ def checkSBFitFinal(filename,label,roobins,plotname, nPars, plot_dir):
 
     #chi2,ndof = calculateChi2(hpull, nPars +1)
 
-    pdf_names = ["model_s"] 
-    PlotFitResults(frame,fres.GetName(),nPars+1,frame3,"data_obs", pdf_names,chi2,ndof,'sbFit_'+plotname, plot_dir, has_sig = True)
+    pdf_names = ["model_s","Signal","Background"] 
+    PlotFitResults(frame,fres.GetName(),nPars,frame3,"data_obs", pdf_names,chi2,ndof,'sbFit_'+plotname, plot_dir, has_sig = True)
 
     print "chi2,ndof are", chi2, ndof
     return chi2, ndof

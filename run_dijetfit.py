@@ -39,7 +39,6 @@ def plotPValue(xsec_scan, quantiles, labels, plot_name_suffix='', out_dir=''):
         ys = array('d', [])
         yp = array('d',[])
 
-        print(out_dir)
         fin = open(os.path.join(out_dir,'results_%s.txt'%q), 'r')
         for l in fin.readlines():
             l = l.split('\t')
@@ -62,7 +61,31 @@ def plotPValue(xsec_scan, quantiles, labels, plot_name_suffix='', out_dir=''):
         gp.SetLineWidth(2)
         gp.SetMarkerSize(1.)
         graphs.append(gp)
-        
+
+    #JEN -- to add the q90 only category on top
+    #fin = open(os.path.join("eos_vae/scans_XToYYprimeTo4Q_MX2000_MY400_MYprime170/scan_run1_signal_XToYYprimeTo4Q_MX2000_MY400_MYprime170_narrowReco",'results_q90.txt'), 'r')
+    #x = array('d', xsec_scan*scale)
+    #ys = array('d', [])
+    #yp = array('d',[])
+    #for l in fin.readlines():
+    #        l = l.split('\t')
+    #        yp.append(float(l[1]))
+    #        ys.append(float(l[2]))
+    #fin.close()
+    
+    #print("q90-only",ys)
+    #print("q90-only",yp)
+    #nPoints=len(x)
+    #gp = ROOT.TGraph(nPoints,x,yp)
+    #gp.SetName("PValue_q90_only")
+    #gp.SetLineColor(col.GetColor(palette[len(quantiles)+1]))
+    #gp.SetMarkerColor(col.GetColor(palette[len(quantiles)+1]))
+    #gp.SetMarkerStyle(20)
+    #gp.SetLineWidth(2)
+    #gp.SetMarkerSize(1.)
+    #graphs.append(gp)
+    #JEN
+
     pvalues = [ ROOT.RooStats.SignificanceToPValue(i) for i in range(1,7) ]
     lines = [ ROOT.TLine(xmin,pvalues[i-1],xmax,pvalues[i-1]) for i in range(1,7) ]
     for l in lines:
@@ -86,6 +109,7 @@ def plotPValue(xsec_scan, quantiles, labels, plot_name_suffix='', out_dir=''):
     legend.SetMargin(0.35)
 
     for iq,q in enumerate(quantiles): legend.AddEntry(graphs[iq],labels[iq],'LP')
+    #legend.AddEntry(graphs[iq+1],labels[iq+1],'LP') #JEN -- to add the q90 only category on top
 
     graphs[0].Draw('LP')
     for g in range(1,len(graphs)): graphs[g].Draw("LPsame")
@@ -104,13 +128,13 @@ def plotPValue(xsec_scan, quantiles, labels, plot_name_suffix='', out_dir=''):
     canv.cd()
     canv.Update()
  
-    canv.SaveAs(os.path.join(out_dir, "pvalue"+plot_name_suffix+".png"))
+    canv.SaveAs(os.path.join(out_dir, "pvalue_"+plot_name_suffix+".png"))
     time.sleep(10)
 
 
 if __name__ == "__main__":
 
-    #python run_dijetfit.py --run --i inputdir -M 1500 --sig RSGraviton_WW_NARROW_13TeV_PU40_1.5TeV_parts/RSGraviton_WW_NARROW_13TeV_PU40_1.5TeV_reco.h5 --qcd qcd_sqrtshatTeV_13TeV_PU40_ALL_parts/qcd_sqrtshatTeV_13TeV_PU40_ALL_reco.h5
+    #python run_dijetfit.py --i /afs/cern.ch/work/i/izoi/public/forJennifer/run_41025/ --sig XToYYprimeTo4Q_MX2000_MY80_MYprime170 --qcd bkg.h5 -M 2000 -n 1 --run --config 4 -C
 
     parser = optparse.OptionParser()
     parser.add_option("--run","--run", dest="run", default=False, action="store_true", help="Run scan")
@@ -118,38 +142,69 @@ if __name__ == "__main__":
     parser.add_option("-M","-M", dest="mass", type=float, default=3500., help="Injected signal mass")
     parser.add_option("-i","--inputDir",dest="inputDir", default='./', help="directory with all quantiles h5 files")
     parser.add_option("--qcd","--qcd", dest="qcdFile", default='qcd.h5', help="QCD h5 file")
-    parser.add_option("--sig","--sig", dest="sigFile", default='signal.h5', help="Signal h5 file")
-    parser.add_option("-x", "--sigxsec", dest="sigXsec", default=10, help="true signal cross-section")
-    parser.add_option("--res", "--res", dest="sigRes", type="choice", choices=("na", "br"), default="na", help="resonance type: narrow [na] or broad [br]")
-    parser.add_option("-l", "--loss", dest="lossId", type=str, default="rk5_10", help="loss combination strategy")
+    parser.add_option("--sig","--sig",dest="signal",type=str,default='XToYYprimeTo4Q_MX2000_MY80_MYprime170',help="Signal name")
+    parser.add_option("-C","--correlate",dest="correlateB",action="store_true",help="Coorelate background shape among quantiles")
+    parser.add_option("--config","--config", dest="config", type=int, default=4, help="quantiles config")
+    parser.add_option("--init","--init",dest="init",action="store_true",help="True to manually inject signal in spectrum and retrieve observed significance; False to let combine do the emulatio and retrieve expected significance")
     (options,args) = parser.parse_args()
 
+    init = options.init
     run = options.run
     mass = options.mass
-    sigFile = options.sigFile
+    signal = options.signal
     qcdFile = options.qcdFile
     inputDir = options.inputDir
-    sigRes = options.sigRes
-    xsec = np.array(get_xsec_scan(options.sigFile)) # pb
+    xsec = np.array(get_xsec_scan(options.signal)) # pb
 
-    # distinctive run string
-    run_str = make_run_str(sig_name=options.sigFile, sig_xsec=options.sigXsec, run_n=options.run_n, loss_id=options.lossId)
-    out_dir = run_str[1:]
+    out_dir = "scan_run"+str(options.run_n)+"_"+signal
     os.system('mkdir %s'%out_dir)
-    print(run_str[1:])
 
     if len(xsec) == 0:
         print "ERROR: set the cross sections to scan for signal",sigFile,"in the files_count.json file!"
         sys.exit()
 
-    quantiles = ['q05', 'q10', 'q30', 'q50', 'q70', 'q100', 'total']
-    labels = ['q:0-5%','q:5-10%','q:10-30%','q:30-50%','q:50-70%','q:70-100%','bump hunt']
+    if options.config==1:
+        quantiles = ['q0', 'q30', 'q50', 'q70', 'q90', 'total']
+        labels = ['q:70-100%', 'q:50-70%', 'q:30-50%', 'q:10-30%', 'q:0-10%', 'bump hunt']
+    elif options.config==2:    
+        quantiles = ['q0', 'q30', 'q50', 'q70', 'q90', 'q95', 'total']
+        labels = ['q:70-100%', 'q:50-70%', 'q:30-50%', 'q:10-30%', 'q:5-10%', 'q:0-5%', 'bump hunt']
+    elif options.config==3:    
+        quantiles = ['q0', 'q30', 'q50', 'q70', 'q90', 'q95', 'q99', 'total']
+        labels = ['q:70-100%', 'q:50-70%', 'q:30-50%', 'q:10-30%', 'q:5-10%', 'q:1-5%', 'q:0-1%', 'bump hunt']
+    elif options.config==4:    
+        quantiles = ['q90', 'q95', 'q99', 'total']
+        #labels = ['q: 90 - 95%', 'Q: 95 - 99%', 'Q: > 99%', 'Inclusive Fit', "Q: > 90%"]
+        labels = ['q: 90 - 95%', 'Q: 95 - 99%', 'Q: > 99%', 'Inclusive Fit']
+    elif options.config==5:    
+        quantiles = ['q95', 'q99', 'total']
+        labels = ['q:1-5%', 'q:0-1%', 'bump hunt']
+    elif options.config==6:    
+        quantiles = ['q70', 'q90', 'q95', 'q99', 'total']
+        labels = ['q:10-30%', 'q:5-10%', 'q:1-5%', 'q:0-1%', 'bump hunt']
+    elif options.config==7:    
+        quantiles = ['q50', 'q70', 'q90', 'q95', 'q99', 'total']
+        labels = ['q:30-50%', 'q:10-30%', 'q:5-10%', 'q:1-5%', 'q:0-1%', 'bump hunt']
 
     #if you have already run the scan, results are saved in txt files 
     if run == 0:
-        plotPValue(xsec, quantiles + ['final'], labels + ['AD bump hunt'], run_str, out_dir=out_dir)
+        if init == True: out_dir = "scan_run{run}_{signal}_xsec0_init".format(run=options.run_n, signal=signal)
+        plotPValue(xsec, quantiles + ['final'], labels + ['AD Combined Fit'], signal, out_dir=out_dir)
         print("NOT CHECK OUTPUT FOLDER",out_dir)
         sys.exit()
+
+    if init == True:
+        #prepare xsec=0 workspace
+        cmd = "python dijetfit.py --xsec 0.0 -M {mass} -i {inputdir} --sig signal_{signal}_narrowReco.h5 --qcd {qcdfile} --out scan_run{run}_{signal}_xsec0_init --config {config} --run_toys".format(run=options.run_n, inputdir=inputDir, signal=signal, qcdfile=qcdFile, mass=mass, config=options.config)
+        if options.correlateB == True: cmd += ' -C'
+        print(cmd)
+        os.system(cmd)
+
+        #prepare xsec>0 workspace [this is needed so that the --expectSignal in combine is equal to the cross section]
+        cmd = "python dijetfit.py --xsec 1.0 -M {mass} -i {inputdir} --sig signal_{signal}_narrowReco.h5 --qcd {qcdfile} --out scan_run{run}_{signal}_xsec1_init --config {config} --run_toys".format(run=options.run_n, inputdir=inputDir, signal=signal, qcdfile=qcdFile, mass=mass, config=options.config)
+        if options.correlateB == True: cmd += ' -C'
+        print(cmd)
+        os.system(cmd)
 
     #now run the scan
     x = array('d', xsec)
@@ -159,33 +214,54 @@ if __name__ == "__main__":
     for q in quantiles:
         ysig[q] = []
         ypvalue[q] = []
+        if init: out_dir = "scan_run{run}_{signal}_xsec0_init".format(run=options.run_n, signal=signal)
         outfiles.append(open(out_dir+'/results_%s.txt'%q,'w'))
 
     for x in xsec:
 
-        cmd = "python dijetfit.py -i {inputdir} --sig {sigfile} --qcd {qcdfile} --xsec {xsec} -M {mass} --res {res} --out {out_dir}".format(inputdir=inputDir, xsec=x, sigfile=sigFile, qcdfile=qcdFile, mass=mass, res=sigRes, out_dir=out_dir)
-        if x!=0: cmd+=' -l' #assuming first xsec is zero so after that you can load input data with option -l
-        print cmd
-        os.system(cmd)
-
+        qcdfile = qcdFile
+        exp_sig = 0
+        xsec_init = 0.0
+        if init == True:
+            exp_sig = x
+            out_dir = "scan_run{run}_{signal}_xsec0_init".format(run=options.run_n, signal=signal)
+        if x>0: 
+            exp_sig = 1
+            xsec_init = 1.0
+            qcdfile = qcdFile.replace('.h5',"_"+signal+"_narrowReco_"+str(x)+'.h5') #take background file with signal injected in the QR
+            if init == True:
+                exp_sig = x
+                out_dir = "scan_run{run}_{signal}_xsec1_init".format(run=options.run_n, signal=signal)
+                qcdfile = qcdFile
+        
+        if init == False: #manual signal injection in background spectrum
+            cmd = "python dijetfit.py -i {inputdir} --sig signal_{signal}_narrowReco.h5 --qcd {qcdfile} --xsec {xsec} -M {mass} --out {out_dir}/xsec{xsec} --config {config}".format(inputdir=inputDir, xsec=x, signal=signal, qcdfile=qcdfile, mass=mass, out_dir=out_dir,config=options.config)
+            if options.correlateB == True: cmd += ' -C' 
+            print cmd
+            os.system(cmd)
+        
         for iq,q in enumerate(quantiles):
 
-            cmd = 'cd {out_dir} && combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} -n significance_{xsec}_{label}'.format(out_dir=out_dir, xsec=x, label=q, mass=int(mass))
+            cmd = 'cd {out_dir}/xsec{XSEC} && combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} -n significance_{xsec}_{label}'.format(out_dir=out_dir, XSEC=x, xsec=x*1000, label=q, mass=int(mass))
+            if init == True: cmd = 'cd {out_dir} && combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} -n significance_{expsig}_{label} --toysFreq -t -1 --expectSignal={expsig}'.format(expsig=exp_sig,out_dir=out_dir, xsec=xsec_init*1000, label=q, mass=int(mass))
             print cmd
             os.system(cmd)
 
-            cmd = 'cd {out_dir} && combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} -n pvalue_{xsec}_{label} --pvalue'.format(out_dir=out_dir, xsec=x, label=q, mass=int(mass))
+            cmd = 'cd {out_dir}/xsec{XSEC} && combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} -n pvalue_{xsec}_{label} --pvalue'.format(out_dir=out_dir, XSEC=x, xsec=x*1000, label=q, mass=int(mass))
+            if init == True: cmd = 'cd {out_dir} && combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} -n pvalue_{expsig}_{label} --pvalue --toysFreq -t -1 --expectSignal={expsig}'.format(expsig=exp_sig, out_dir=out_dir, xsec=xsec_init*1000, label=q, mass=int(mass))
             print cmd
             os.system(cmd)
                 
-            tf = ROOT.TFile.Open('{out_dir}/higgsCombinesignificance_{xsec}_{label}.Significance.mH{mass}.root'.format(out_dir=out_dir, xsec=x,label=q,mass=int(mass)),'READ')
+            if init == False: tf = ROOT.TFile.Open('{out_dir}/xsec{XSEC}/higgsCombinesignificance_{xsec}_{label}.Significance.mH{mass}.root'.format(out_dir=out_dir, XSEC=x, xsec=x*1000,label=q,mass=int(mass)),'READ')
+            else: tf = ROOT.TFile.Open('{out_dir}/higgsCombinesignificance_{expsig}_{label}.Significance.mH{mass}.root'.format(expsig=exp_sig, out_dir=out_dir,label=q,mass=int(mass)),'READ')
             tree = tf.limit
             tree.GetEntry(0)         
             ysig[q].append(tree.limit)
             print "Xsec",x,"quantile",q,"significance",ysig[q][-1]       
             tf.Close()
 
-            tf = ROOT.TFile.Open('{out_dir}/higgsCombinepvalue_{xsec}_{label}.Significance.mH{mass}.root'.format(out_dir=out_dir, xsec=x,label=q,mass=int(mass)),'READ')
+            if init == False: tf = ROOT.TFile.Open('{out_dir}/xsec{XSEC}/higgsCombinepvalue_{xsec}_{label}.Significance.mH{mass}.root'.format(out_dir=out_dir, XSEC=x, xsec=x*1000,label=q,mass=int(mass)),'READ')
+            else: tf = ROOT.TFile.Open('{out_dir}/higgsCombinepvalue_{expsig}_{label}.Significance.mH{mass}.root'.format(expsig=exp_sig, out_dir=out_dir, label=q,mass=int(mass)),'READ')
             tree = tf.limit
             tree.GetEntry(0)         
             ypvalue[q].append(tree.limit)        
@@ -197,26 +273,43 @@ if __name__ == "__main__":
  
     ysig['combo'] = []
     ypvalue['combo'] = []
+    if init: out_dir = "scan_run{run}_{signal}_xsec0_init".format(run=options.run_n, signal=signal)
     outfiles.append(open(out_dir+'/results_final.txt','w'))
 
     for x in xsec:
 
-        cmd = 'cd {out_dir} && combine -M Significance workspace_{xsec}_{label}.root -m {mass} -n significance_{xsec}'.format(out_dir=out_dir, xsec=x,label='final',mass=int(mass))
+        exp_sig = 0
+        xsec_init = 0.0
+        if init == True:
+            exp_sig = x
+            out_dir = "scan_run{run}_{signal}_xsec0_init".format(run=options.run_n, signal=signal)
+        if x>0: 
+            exp_sig = 1
+            xsec_init = 1.0
+            if init == True:
+                exp_sig = x
+                out_dir = "scan_run{run}_{signal}_xsec1_init".format(run=options.run_n, signal=signal)
+            
+        if init == False: cmd = 'cd {out_dir}/xsec{XSEC} && combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} -n significance_{xsec}'.format(out_dir=out_dir, XSEC=x, xsec=x*1000.,label='final',mass=int(mass))
+        else: cmd = 'cd {out_dir} && combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} -n significance_{expsig} --toysFreq -t -1 --expectSignal={expsig}'.format(expsig=exp_sig, xsec=xsec_init*1000, out_dir=out_dir, label='final',mass=int(mass))
         print cmd
         os.system(cmd)
 
-        cmd = 'cd {out_dir} && combine -M Significance workspace_{xsec}_{label}.root -m {mass} -n pvalue_{xsec} --pvalue'.format(out_dir=out_dir, xsec=x,label='final',mass=int(mass))
+        if init == False: cmd = 'cd {out_dir}/xsec{XSEC} && combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} -n pvalue_{xsec} --pvalue'.format(out_dir=out_dir, XSEC=x, xsec=x*1000.,label='final',mass=int(mass))
+        else: cmd = 'cd {out_dir} && combine -M Significance workspace_JJ_{xsec}_{label}.root -m {mass} -n pvalue_{expsig} --pvalue  --toysFreq -t -1 --expectSignal={expsig}'.format(expsig=exp_sig, xsec=xsec_init*1000, out_dir=out_dir, label='final',mass=int(mass))
         print cmd
         os.system(cmd)
             
-        tf = ROOT.TFile.Open('{out_dir}/higgsCombinesignificance_{xsec}.Significance.mH{mass}.root'.format(out_dir=out_dir, xsec=x,mass=int(mass)),'READ')
+        if init == False: tf = ROOT.TFile.Open('{out_dir}/xsec{XSEC}/higgsCombinesignificance_{xsec}.Significance.mH{mass}.root'.format(out_dir=out_dir, XSEC=x, xsec=x*1000.,mass=int(mass)),'READ')
+        else: tf = ROOT.TFile.Open('{out_dir}/higgsCombinesignificance_{expsig}.Significance.mH{mass}.root'.format(expsig=exp_sig, out_dir=out_dir, mass=int(mass)),'READ')
         tree = tf.limit
         tree.GetEntry(0)             
         ysig['combo'].append(tree.limit)             
         print "Xsec",x,"COMBO significance",ysig['combo'][-1]        
         tf.Close()
 
-        tf = ROOT.TFile.Open('{out_dir}/higgsCombinepvalue_{xsec}.Significance.mH{mass}.root'.format(out_dir=out_dir, xsec=x,mass=int(mass)),'READ')
+        if init == False: tf = ROOT.TFile.Open('{out_dir}/xsec{XSEC}/higgsCombinepvalue_{xsec}.Significance.mH{mass}.root'.format(out_dir=out_dir, XSEC=x, xsec=x*1000.,mass=int(mass)),'READ')
+        else: tf = ROOT.TFile.Open('{out_dir}/higgsCombinepvalue_{expsig}.Significance.mH{mass}.root'.format(expsig=exp_sig, out_dir=out_dir, mass=int(mass)),'READ')
         tree = tf.limit
         tree.GetEntry(0)             
         ypvalue['combo'].append(tree.limit)          
@@ -229,6 +322,7 @@ if __name__ == "__main__":
     print ysig
     print ypvalue
    
-    plotPValue(xsec, quantiles + ['final'], labels + ['AD bump hunt'], run_str, out_dir=out_dir)
+    if init: out_dir = "scan_run{run}_{signal}_xsec0_init".format(run=options.run_n, signal=signal)
+    plotPValue(xsec, quantiles + ['final'], labels + ['AD bump hunt'], signal, out_dir=out_dir)
     print("NOT CHECK OUTPUT FOLDER",out_dir)
   

@@ -149,7 +149,7 @@ class DataCardMaker:
         pdfName="_".join([name,self.tag])
         f=ROOT.TFile(filename)
         histogram=f.Get(histoName)
-        events=histogram.Integral()*self.luminosity*constant # !!!
+        events=histogram.GetEntries()*self.luminosity*constant # !!!
         self.contributions.append({'name':name,'pdf':pdfName,'ID':ID,'yield':events})
 
     # add a floatable number of events value
@@ -158,23 +158,23 @@ class DataCardMaker:
         pdfNorm="_".join([name,self.tag,"norm"])
         f=ROOT.TFile(filename)
         histogram=f.Get(histoName)
-        events=histogram.Integral()
+        events=histogram.GetEntries()
         self.w.factory("{name}[{val},{mini},{maxi}]".format(name=pdfNorm,val=events,mini=mini,maxi=maxi))       
         if constant:
             self.w.var(pdfNorm).setConstant(1)
         self.contributions.append({'name':name,'pdf':pdfName,'ID':ID,'yield':1.0})
 
-    def addFloatingYieldCorr(self,name,ID,filename,histoName,fraction,mini=0,maxi=1e+7):
+    def addFloatingYieldCorr(self,name,ID,filename,histoName,fraction,constant=1.0,mini=0,maxi=1e+7):
         pdfName="_".join([name,self.tag])
         pdfNorm="_".join([name,self.tag,"norm"])
         f=ROOT.TFile(filename)
         histogram=f.Get(histoName)
-        events=histogram.Integral()
-        self.w.factory("{name}[{val},{mini},{maxi}]".format(name="shapeBkg_model_qcd_mjj_JJ_q100__norm",val=875147.0,mini=mini,maxi=maxi)) #the value here can be whatever
+        events=histogram.GetEntries()
+        self.w.factory("{name}[{val},{mini},{maxi}]".format(name="shapeBkg_model_qcd_mjj_JJ_q0__norm",val=constant,mini=mini,maxi=maxi)) #the value here can be whatever
         fName = "_".join([name,self.tag,"fraction"])
         self.w.factory("{name}[{val},{mini},{maxi}]".format(name=fName,val=fraction,mini=0,maxi=1))
         self.w.var(fName).setConstant(1)
-        prod = ROOT.RooFormulaVar(pdfNorm,"@0*@1", ROOT.RooArgList(self.w.var("shapeBkg_model_qcd_mjj_JJ_q100__norm"),self.w.var(fName)))
+        prod = ROOT.RooFormulaVar(pdfNorm,"@0*@1", ROOT.RooArgList(self.w.var("shapeBkg_model_qcd_mjj_JJ_q0__norm"),self.w.var(fName)))
         getattr(self.w,'import')(prod,ROOT.RooFit.Rename(pdfNorm))
         self.contributions.append({'name':name,'pdf':pdfName,'ID':ID,'yield':1.0})
 
@@ -341,21 +341,23 @@ class DataCardMaker:
         parsG = [f.Get('p%i'%i) for i in range(1,nPars+1)]
         pars_val = [ROOT.Double(0.) for i in range(0,nPars)]       
         for i in range(1,nPars+1):
-         x = ROOT.Double(0.)
-         #parsG[i-1].GetPoint(0,x,pars_val[i-1])
+         x = ROOT.Double(0.)         
          pName="_".join(["CMS_JJ_p%i"%i,self.tag])
          if nPars==6 and i==5:
             errUp=5000
             errDown=1
-            pars_val[i-1] = 1000
+         #   pars_val[i-1] = 1000
          elif nPars==6 and i==6:
             errUp=2500
             errDown=0
-            pars_val[i-1] = 1600
+         #   pars_val[i-1] = 1600
          else:
-          errUp=errs[i-1] #pars_val[i-1]+parsG[i-1].GetErrorYhigh(0)*100.
-          errDown=-errs[i-1] #pars_val[i-1]-parsG[i-1].GetErrorYlow(0)*100.
-          pars_val[i-1] = values[i-1]
+          errUp=errs[i-1]
+          errDown=-errs[i-1]
+         #pars_val[i-1] = values[i-1]
+         parsG[i-1].GetPoint(0,x,pars_val[i-1])
+         #errUp = pars_val[i-1]+parsG[i-1].GetErrorYhigh(0)*1000.
+         #errDown = -pars_val[i-1]-parsG[i-1].GetErrorYlow(0)*1000.
          print i,pName,pars_val[i-1],parsG[i-1].GetErrorYhigh(0),parsG[i-1].GetErrorYlow(0),errUp,errDown
          self.w.factory("{name}[{val},{errDown},{errUp}]".format(name=pName,val=pars_val[i-1],errUp=errUp,errDown=errDown))
         
@@ -380,21 +382,23 @@ class DataCardMaker:
         parsG = [f.Get('p%i'%i) for i in range(1,nPars+1)]
         pars_val = [ROOT.Double(0.) for i in range(0,nPars)]       
         for i in range(1,nPars+1):
-         x = ROOT.Double(0.)
-         #parsG[i-1].GetPoint(0,x,pars_val[i-1])
+         x = ROOT.Double(0.)         
          pName="CMS_JJ_p%i"%i
          if nPars==6 and i==5:
             errUp=5000
             errDown=1
-            pars_val[i-1] = 1000
+            #pars_val[i-1] = 1000
          elif nPars==6 and i==6:
             errUp=2500
             errDown=0
-            pars_val[i-1] = 1600
+            #pars_val[i-1] = 1600
          else:
-          errUp=errs[i-1] #pars_val[i-1]+parsG[i-1].GetErrorYhigh(0)*100.
-          errDown=-errs[i-1] #pars_val[i-1]-parsG[i-1].GetErrorYlow(0)*100.
-          pars_val[i-1] = values[i-1]
+            errUp=errs[i-1]
+            errDown=-errs[i-1]
+            #pars_val[i-1] = values[i-1]
+         parsG[i-1].GetPoint(0,x,pars_val[i-1])
+         #errUp = pars_val[i-1]+parsG[i-1].GetErrorYhigh(0)*1000.
+         #errDown = -pars_val[i-1]-parsG[i-1].GetErrorYlow(0)*1000.
          print i,pName,pars_val[i-1],parsG[i-1].GetErrorYhigh(0),parsG[i-1].GetErrorYlow(0),errUp,errDown
          self.w.factory("{name}[{val},{errDown},{errUp}]".format(name=pName,val=pars_val[i-1],errUp=errUp,errDown=errDown))
         
