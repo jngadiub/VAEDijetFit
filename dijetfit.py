@@ -360,7 +360,7 @@ if __name__ == "__main__":
       print
 
       # signal xsec set to 0 by default, so hdatasig hist not filled !
-      if sig_xsec != 0 and options.run_toys == False:     
+      if sig_xsec != 0 and not options.run_toys:     
          num_sig_evts = int(histos_sig[iq].GetEntries()*sig_scale)
          print "Generate", num_sig_evts, "signal events!" 
          datasig = model_s.generateBinned(ROOT.RooArgSet(mjj),num_sig_evts)
@@ -509,9 +509,6 @@ if __name__ == "__main__":
          chi2s[iq].append(my_chi2)
          ndofs[iq].append(my_ndof)
          probs[iq].append(my_prob)
-         #chi2s[iq][i] = my_chi2
-         #ndofs[iq][i] = my_ndof
-         #probs[iq][i] = my_prob
          fitter_QCD.delete()
       
       print(nParsToTry)
@@ -555,7 +552,7 @@ if __name__ == "__main__":
       card.addQCDShapeNoTag('model_qcd_mjj','mjj', os.path.join(out_dir, qcd_fname[iq]), nPars_QCD[iq])
       card.addFloatingYield('model_qcd_mjj',1, os.path.join(out_dir, qcd_fname[iq]), histos_qcd[iq].GetName()) #in reality we won't have this value from MC but we can put whatever since it's a flatParam
       for i in range(1,nPars_QCD[iq]+1): card.addSystematic("CMS_JJ_p%i"%i,"flatParam",[])
-      #card.addSystematic("shapeBkg_model_qcd_mjj_JJ_%s__norm"%q,"flatParam",[]) # integral -> anzahl events -> fuer skalierung der genormten roofit histogramm
+      card.addSystematic("shapeBkg_model_qcd_mjj_JJ_%s__norm"%q,"flatParam",[]) # integral -> anzahl events -> fuer skalierung der genormten roofit histogramm
 
       card.importBinnedData(os.path.join(out_dir, 'sb_fit_%s.root'%q), 'mjj_generate_tot_%s'%q,["mjj"],'data_obs',1.0)
       card.makeCard()
@@ -613,7 +610,7 @@ if __name__ == "__main__":
       card.addFixedYieldFromFile('model_signal_mjj',0, os.path.join(out_dir, 'sig_fit_%s.root'%q), "mjj_sig_%s"%q, constant=constant) #JEN CHANGE BACK TO: histos_sig[iq].GetName()
       card.addSystematic("CMS_scale_j","param",[0.0,0.012])
       card.addSystematic("CMS_res_j","param",[0.0,0.08]) 
-      #card.addSystematic("norm_unc","lnN",{"model_signal_mjj":1.20})
+      card.addSystematic("norm_unc","lnN",{"model_signal_mjj":1.20})
 
       if options.correlateB == True:
          #TAKE BACKGROUND SHAPE COMES FROM BACKGROUND-ENRICHED QUANTILE SLICE --> WHICH ONE? TRY THE Q0 SLICE!
@@ -649,9 +646,9 @@ if __name__ == "__main__":
           cmd = 'cd {out_dir} && ' \
           'mv datacard_tmp.txt datacard_{xsec}_final.txt && ' \
           'text2workspace.py datacard_{xsec}_final.txt -o workspace_JJ_{xsec}_final.root && ' \
-          'combine -M FitDiagnostics workspace_{xsec}_final.root -m {mass} -n _M{mass}_xsec{xsec} && ' \
-          'combine -M Significance workspace_{xsec}_final.root -m {mass} -n significance_{xsec} && '\
-          'combine -M Significance workspace_{xsec}_final.root -m {mass} --pvalue -n pvalue_{xsec}'.format(out_dir=out_dir, mass=mass,xsec=sig_xsec, SEED=seed)
+          'combine -M FitDiagnostics workspace_JJ_{xsec}_final.root -m {mass} -n _M{mass}_xsec{xsec} && ' \
+          'combine -M Significance workspace_JJ_{xsec}_final.root -m {mass} -n significance_{xsec} && '\
+          'combine -M Significance workspace_JJ_{xsec}_final.root -m {mass} --pvalue -n pvalue_{xsec}'.format(out_dir=out_dir, mass=mass,xsec=sig_xsec, SEED=seed)
    else:
           cmd = 'cd {out_dir} && ' \
           'mv datacard_tmp.txt datacard_{xsec}_final.txt && ' \
@@ -666,4 +663,4 @@ if __name__ == "__main__":
 
    for iq,q in enumerate(quantiles): 
       if q == 'total': continue
-      checkSBFitFinal(out_dir+'/workspace_JJ_{xsec}_{label}.root'.format(xsec=sig_xsec,label='final'),q,roobins,'M{mass}_xsec{xsec}_{q}_final.root'.format(mass=mass,xsec=sig_xsec,q=q),2,out_dir)
+      checkSBFitFinal(out_dir+'/workspace_JJ_{xsec}_{label}.root'.format(xsec=sig_xsec,label='final'),q,roobins,'M{mass}_xsec{xsec}_{q}_final.root'.format(mass=mass,xsec=sig_xsec,q=q),nPars_QCD[0],out_dir)
