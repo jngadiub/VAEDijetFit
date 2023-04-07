@@ -540,7 +540,7 @@ def checkSBFit(filename,label,roobins,plotname, nPars, plot_dir):
 
 
     
-    fres = model.fitTo(data,ROOT.RooFit.SumW2Error(1),ROOT.RooFit.Minos(0),ROOT.RooFit.Verbose(0),ROOT.RooFit.Save(1),ROOT.RooFit.NumCPU(8)) 
+    fres = model.fitTo(data,ROOT.RooFit.SumW2Error(1),ROOT.RooFit.Minos(0),ROOT.RooFit.Verbose(0),ROOT.RooFit.Save(1),ROOT.RooFit.NumCPU(8), ROOT.RooFit.Minimizer("Minuit2")) 
     fres.Print()
     
     frame = var.frame()
@@ -666,9 +666,21 @@ def checkSBFitFinal(filename,label,roobins,plotname, nPars, plot_dir):
 
     fit_norm = ROOT.RooFit.Normalization(rescale,ROOT.RooAbsReal.Relative)
 
+    #for multi category fit, explicitly pull out signal and bkg normalizations
+    l = 'n_exp_binJJ_%s_proc_model_signal_mjj' % label
+    sig_norm_var = workspace.obj(l)
+    sig_norm_val = sig_norm_var.getValV() * rescale
+    sig_norm = ROOT.RooFit.Normalization(sig_norm_val, ROOT.RooAbsReal.NumEvent)
+
+
+    l = 'shapeBkg_model_qcd_mjj_JJ_%s__norm' % label
+    bkg_norm_var = workspace.obj(l)
+    bkg_norm_val = bkg_norm_var.getValV() * rescale
+    bkg_norm = ROOT.RooFit.Normalization(bkg_norm_val, ROOT.RooAbsReal.NumEvent)
+
 
     
-    fres = model.fitTo(data_all,ROOT.RooFit.SumW2Error(1),ROOT.RooFit.Minos(0),ROOT.RooFit.Verbose(0),ROOT.RooFit.Save(1),ROOT.RooFit.NumCPU(8)) 
+    fres = model.fitTo(data_all,ROOT.RooFit.SumW2Error(1),ROOT.RooFit.Minos(0),ROOT.RooFit.Verbose(0),ROOT.RooFit.Save(1),ROOT.RooFit.NumCPU(8), ROOT.RooFit.Minimizer("Minuit2")) 
     fres.Print()
     
     frame = var.frame()
@@ -678,8 +690,10 @@ def checkSBFitFinal(filename,label,roobins,plotname, nPars, plot_dir):
     model_sb_ShapeBpS_1cat.plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kRed-7),ROOT.RooFit.LineColor(ROOT.kRed-7),ROOT.RooFit.Name(fres.GetName()),
             fit_norm)
     model_sb_ShapeBpS_1cat.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed+1),ROOT.RooFit.Name("model_s"), fit_norm)
-    model_sb_ShapeSig_1cat.plotOn(frame,ROOT.RooFit.Components("shapeSig_model_signal_mjj_JJ_%s"%label), ROOT.RooFit.LineColor(ROOT.kBlue),ROOT.RooFit.Name("Signal"), fit_norm)
-    model_bonly_1cat.plotOn(frame,ROOT.RooFit.Components("shapeBkg_model_qcd_mjj_JJ_%s"%label), ROOT.RooFit.LineColor(ROOT.kMagenta + 3),ROOT.RooFit.Name("Background"), fit_norm)
+    model_sb_ShapeSig_1cat.plotOn(frame,ROOT.RooFit.Components("shapeSig_model_signal_mjj_JJ_%s"%label), ROOT.RooFit.LineColor(ROOT.kBlue),ROOT.RooFit.Name("Signal"), sig_norm)
+    model_bonly_1cat.plotOn(frame,ROOT.RooFit.Components("shapeBkg_model_qcd_mjj_JJ_%s"%label), ROOT.RooFit.LineColor(ROOT.kMagenta + 3),ROOT.RooFit.Name("Background"), bkg_norm)
+
+
 
     #model_qcd.plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kGreen-7),ROOT.RooFit.LineColor(ROOT.kGreen-7), ROOT.RooFit.Name("Background"))
     #model_qcd.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed+1),ROOT.RooFit.Name("Background"))
@@ -710,3 +724,4 @@ def checkSBFitFinal(filename,label,roobins,plotname, nPars, plot_dir):
 
     print "chi2,ndof are", chi2, ndof
     return chi2, ndof
+
