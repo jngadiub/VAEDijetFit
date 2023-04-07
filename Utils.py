@@ -618,7 +618,6 @@ def checkSBFitFinal(filename,label,roobins,plotname, nPars, plot_dir):
     
     fin = ROOT.TFile.Open(filename,'READ')
     workspace = fin.w
-    workspace.Print()
 
     sig_name = 'shapeSig_model_signal_mjj_JJ_%s' % label
     bkg_name = "pdf_binJJ_%s"%label
@@ -725,3 +724,4 @@ def checkSBFitFinal(filename,label,roobins,plotname, nPars, plot_dir):
 
     print "chi2,ndof are", chi2, ndof
     return chi2, ndof
+
