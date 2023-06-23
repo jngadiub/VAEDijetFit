@@ -149,7 +149,7 @@ class DataCardMaker:
         pdfName="_".join([name,self.tag])
         f=ROOT.TFile(filename)
         histogram=f.Get(histoName)
-        events=histogram.GetEntries()*self.luminosity*constant # !!!
+        events=1680.#histogram.GetEntries()*self.luminosity*constant # !!!
         self.contributions.append({'name':name,'pdf':pdfName,'ID':ID,'yield':events})
 
     # add a floatable number of events value
@@ -280,14 +280,22 @@ class DataCardMaker:
        
         self.w.factory(variable+"[0,13000]")
         
+        #f = ROOT.TFile(jsonFile,'READ')
+        #G_mean = f.Get('mean')
+        #G_sigma = f.Get('sigma')
+        #G_alpha1 = f.Get('alpha1')
+        #G_alpha2 = f.Get('alpha2')
+        #G_n1 = f.Get('n1')
+        #G_n2 = f.Get('n2')
+
         f = ROOT.TFile(jsonFile,'READ')
         G_mean = f.Get('mean')
         G_sigma = f.Get('sigma')
-        G_alpha1 = f.Get('alpha1')
+        G_alpha1 = f.Get('alpha')
         G_alpha2 = f.Get('alpha2')
-        G_n1 = f.Get('n1')
-        G_n2 = f.Get('n2')
-        
+        G_n1 = f.Get('sign')
+        G_n2 = f.Get('sign2')
+
         x = ROOT.Double(0.)
         mean = ROOT.Double(0.)
         G_mean.GetPoint(0,x,mean)
