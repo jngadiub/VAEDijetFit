@@ -543,8 +543,6 @@ if __name__ == "__main__":
 
          fit_norm = ROOT.RooFit.Normalization(rescale,ROOT.RooAbsReal.Relative)
 
-         linear_errors = False
-
          frame = mjj.frame()
 
         #use toys to sample errors rather than linear method, 
