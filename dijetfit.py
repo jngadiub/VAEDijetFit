@@ -457,8 +457,13 @@ if __name__ == "__main__":
          fit_norm = ROOT.RooFit.Normalization(rescale,ROOT.RooAbsReal.Relative)
 
          frame = mjj.frame()
+
+        #use toys to sample errors rather than linear method, 
+        #needed b/c dijet fn's usually has strong correlation of params
+        linear_errors = False
+
          dataset.plotOn(frame, ROOT.RooFit.Name("data_qcd"), ROOT.RooFit.Invisible(), ROOT.RooFit.Binning(roobins), ROOT.RooFit.DataError(ROOT.RooAbsData.SumW2), ROOT.RooFit.Rescale(rescale))
-         model.plotOn(frame, ROOT.RooFit.VisualizeError(fres, 1), ROOT.RooFit.FillColor(ROOT.kRed - 7), ROOT.RooFit.LineColor(ROOT.kRed - 7), ROOT.RooFit.Name(fres.GetName()), fit_norm)
+         model.plotOn(frame, ROOT.RooFit.VisualizeError(fres, 1, linear_errors), ROOT.RooFit.FillColor(ROOT.kRed - 7), ROOT.RooFit.LineColor(ROOT.kRed - 7), ROOT.RooFit.Name(fres.GetName()), fit_norm)
          model.plotOn(frame, ROOT.RooFit.LineColor(ROOT.kRed + 1), ROOT.RooFit.Name("model_b"),  fit_norm)
 
          useBinAverage = True

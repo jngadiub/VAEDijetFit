@@ -544,10 +544,15 @@ def checkSBFit(filename,label,roobins,plotname, nPars, plot_dir):
     fres.Print()
     
     frame = var.frame()
+
+    #use toys to sample errors rather than linear method, 
+    #needed b/c dijet fn's usually has strong correlation of params
+    linear_errors = False
     
+
     data.plotOn(frame, ROOT.RooFit.DataError(ROOT.RooAbsData.Poisson), ROOT.RooFit.Binning(roobins),ROOT.RooFit.Name("data_obs"),ROOT.RooFit.Invisible(), 
             ROOT.RooFit.Rescale(rescale))
-    model.getPdf('JJ_%s'%label).plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kRed-7),ROOT.RooFit.LineColor(ROOT.kRed-7),ROOT.RooFit.Name(fres.GetName()),
+    model.getPdf('JJ_%s'%label).plotOn(frame,ROOT.RooFit.VisualizeError(fres,1, linear_errors),ROOT.RooFit.FillColor(ROOT.kRed-7),ROOT.RooFit.LineColor(ROOT.kRed-7),ROOT.RooFit.Name(fres.GetName()),
             fit_norm)
     model.getPdf('JJ_%s'%label).plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed+1),ROOT.RooFit.Name("model_s"), fit_norm)
     model.getPdf('JJ_%s'%label).plotOn(frame,ROOT.RooFit.Components("shapeSig_model_signal_mjj_JJ_%s"%label), ROOT.RooFit.LineColor(ROOT.kBlue),ROOT.RooFit.Name("Signal"), fit_norm)
@@ -672,10 +677,12 @@ def checkSBFitFinal(filename,label,roobins,plotname, nPars, plot_dir):
     fres.Print()
     
     frame = var.frame()
+
+    linear_errors = False
     
     data_1cat.plotOn(frame, ROOT.RooFit.DataError(ROOT.RooAbsData.Poisson), ROOT.RooFit.Binning(roobins),ROOT.RooFit.Invisible(), 
             ROOT.RooFit.Rescale(rescale))
-    model_sb_ShapeBpS_1cat.plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kRed-7),ROOT.RooFit.LineColor(ROOT.kRed-7),ROOT.RooFit.Name(fres.GetName()),
+    model_sb_ShapeBpS_1cat.plotOn(frame,ROOT.RooFit.VisualizeError(fres,1, linear_errors),ROOT.RooFit.FillColor(ROOT.kRed-7),ROOT.RooFit.LineColor(ROOT.kRed-7),ROOT.RooFit.Name(fres.GetName()),
             fit_norm)
     model_sb_ShapeBpS_1cat.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed+1),ROOT.RooFit.Name("model_s"), fit_norm)
     model_sb_ShapeSig_1cat.plotOn(frame,ROOT.RooFit.Components("shapeSig_model_signal_mjj_JJ_%s"%label), ROOT.RooFit.LineColor(ROOT.kBlue),ROOT.RooFit.Name("Signal"), fit_norm)
