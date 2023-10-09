@@ -12,6 +12,49 @@ tdrstyle.setTDRStyle()
 ROOT.gROOT.SetBatch(True)
 ROOT.RooRandom.randomGenerator().SetSeed(random.randint(0, 1e+6))
 
+def get_below_bins(h, min_count = 5):
+    out = []
+    #skip first bin (can't merge left)
+    for i in range(2, h.GetNbinsX()+1):
+        c = h.GetBinContent(i)
+
+        #width per 100 gev
+        #width = h.GetBinWidth(i) / 100.
+        #density = c / width
+        #print(i, c, density) 
+
+        #remove left edge of bin if below thresh
+        if( c < min_count ): out.append(i-1)
+    
+
+def get_rebinning(binsx, histos_sb, min_count = 5):
+    h_rebin = histos_sb.Clone("h_rebin_temp")
+    rebins = copy.deepcopy(binsx)
+    below_min = True
+
+    while(below_min):
+        h_rebin = h_rebin.Rebin(len(rebins)-1, "", array('d', rebins))
+        below_bins = get_below_bins(h_rebin, min_count = min_count)
+        if(len(below_bins) < 1): below_min = False
+        else:
+            rebins.pop(below_bins[-1])
+
+    #print("new bins:", rebins)
+
+    return rebins
+
+def get_mjj_max(h_file):
+    with h5py.File(h_file, "r") as f:
+        mjj = np.array(f['mjj'][()])
+        return np.amax(mjj)
+
+def roundTo(arr, base):
+    for i in range(len(arr)):
+        x = arr[i]
+        if(x % base == base/2): new_x = x
+        else: new_x = int(base * round(float(x)/base)) + base/2
+        arr[i] = new_x
+        
 def get_canvas(cname):
 
     tdrstyle.setTDRStyle()
@@ -540,7 +583,7 @@ def checkSBFit(filename,label,roobins,plotname, nPars, plot_dir):
 
 
     
-    fres = model.fitTo(data,ROOT.RooFit.SumW2Error(1),ROOT.RooFit.Minos(0),ROOT.RooFit.Verbose(0),ROOT.RooFit.Save(1),ROOT.RooFit.NumCPU(8)) 
+    fres = model.fitTo(data,ROOT.RooFit.SumW2Error(1),ROOT.RooFit.Minos(0),ROOT.RooFit.Verbose(0),ROOT.RooFit.Save(1),ROOT.RooFit.NumCPU(8), ROOT.RooFit.Minimizer("Minuit2")) 
     fres.Print()
     
     frame = var.frame()
@@ -591,8 +634,76 @@ def checkSBFit(filename,label,roobins,plotname, nPars, plot_dir):
     print "chi2,ndof are", chi2, ndof
     return chi2, ndof
 
+def get_roohist_sum(h):
+    d_sum = 0
+    a_x = array('d', [0.])
+    a_val = array('d', [0.])
+    a_data = array('d', [0.])
 
-def f_test(nParams, nDof, chi2, thresh = 0.05):
+    for p in range (0,h.GetN()):
+        h.GetPoint(p, a_x, a_val)
+        e = h.GetErrorY(p)
+        print("%i %.3f %.3f %.3f" % (p, a_x[0], a_val[0], e))
+        d_sum += a_val[0]
+    return d_sum
+
+def convert_matrix(mat):
+    mat_arr = mat.GetMatrixArray()
+    return [[mat_arr[i + j*mat.GetNrows()] for j in range(mat.GetNcols())] for i in range(mat.GetNrows())]
+    
+#get hist of (data - fit) / tot_unc 
+def get_pull_hist(model, frame, central, curve,  hresid, fit_hist, bins):
+
+    
+    hresid_norm = ROOT.TH1F(hresid.GetName() + "_norm", "", len(bins) -1, array('d', bins))
+
+    upBound = ROOT.TGraph(central.GetN());
+    loBound = ROOT.TGraph(central.GetN());
+
+    #Compute uncertainty on fit function, done in original fine binning 
+    for j in range(curve.GetN()):
+        if( j < central.GetN() ): upBound.SetPoint(j, curve.GetX()[j], curve.GetY()[j]);
+        else: loBound.SetPoint( 2*central.GetN() - j, curve.GetX()[j], curve.GetY()[j]);
+
+
+    #print_roohist(hresid)
+    #print_roohist(hpull)
+
+    a_x = array('d', [0.])
+    a_val = array('d', [0.])
+    a_data = array('d', [0.])
+
+
+    #compute pulls as (data - fit) / total unc
+    for j in range(1, fit_hist.GetNbinsX()+1):
+        delta = 0.001
+        xcenter = fit_hist.GetXaxis().GetBinCenter(j)
+
+        hresid.GetPoint(j-1, a_x, a_val)
+        data_err = hresid.GetErrorY(j-1)
+        resid = a_val[0]
+
+        fit_val = fit_hist.GetBinContent(j)
+
+        #transfer fractional uncertainty on fit in fine binning to larger binning 
+        #kinda approximate, but couldn't find better solution from roofit :/ 
+        up_err  = fit_val * abs(central.Eval(xcenter) - upBound.Eval(xcenter)) / central.Eval(xcenter)
+        down_err  = fit_val * abs(central.Eval(xcenter) - loBound.Eval(xcenter)) / central.Eval(xcenter)
+
+        #Add data and fit unc together in quadrature
+        if(resid > 0): tot_err = (up_err**2 + data_err**2)**(0.5)
+        else: tot_err = (down_err**2 + data_err**2)**(0.5)
+        pull = resid / tot_err
+        #print(j, xcenter, resid, fit_val, data_err, up_err, down_err, tot_err, pull)
+
+        hresid_norm.SetBinContent(j, pull)
+
+    hresid_norm.SetFillColor(ROOT.kGray)
+    hresid_norm.SetLineColor(ROOT.kGray)
+
+    return hresid_norm
+
+def f_test(nParams, nDof, chi2, fit_errs, thresh = 0.05, err_thresh = 0.5):
     #assumes arrays are in increasing number of params order (ie nParams[0] is minimum number of params)
     print  "\n\n #################### STARTING F TEST #######################" 
     best_i = 0
@@ -604,18 +715,31 @@ def f_test(nParams, nDof, chi2, thresh = 0.05):
         nDof_new = nDof[i]
         chi2_new = chi2[i]
 
-        F_num =   max((chi2_base - chi2_new), 0)/(abs(nDof_new - nDof_base))
+        F_num = max((chi2_base - chi2_new), 0)/(abs(nDof_new - nDof_base))
         F_denom = chi2_new/nDof_new 
         F = F_num / F_denom
 
         prob = 1. - ROOT.TMath.FDistI(F, abs(nDof_new - nDof_base), nDof_new)
 
+        print("fit err was %.5f, new is %.5f" % (fit_errs[best_i], fit_errs[i]))
+        print("thresh",thresh)
+        print("err_thresh",err_thresh)
+        print("ndof was %.1f, new is %.1f" % (nDof_base, nDof_new))
         print("Base chi2 was %.1f, new is %.1f" % (chi2_base, chi2_new))
         print("F is %.2f, prob is %.3f" % (F, prob))
 
-        if(prob < thresh):
-            print("Prob below threshold, switching to %i parameters" % nDof_new)
-            best_i = i
+        if(prob < thresh ):
+            if(fit_errs[i] <  err_thresh or fit_errs[i] < fit_errs[best_i]):
+                print("Prob below threshold, switching to %i parameters" % nParams[i])
+                best_i = i
+            else:
+                print("Prob below threshold, but largest param error is too large(%.2f) so NOT adding parameters" % fit_errs[i])
+
+        elif(fit_errs[best_i]  > err_thresh and fit_errs[i] < err_thresh):
+                print("Prob not below threshold but previous best was above error threshold, so switch to %i params" % nParams[i])
+                best_i = i
+
+
 
     return best_i
 
@@ -671,9 +795,21 @@ def checkSBFitFinal(filename,label,roobins,plotname, nPars, plot_dir):
 
     fit_norm = ROOT.RooFit.Normalization(rescale,ROOT.RooAbsReal.Relative)
 
+    #for multi category fit, explicitly pull out signal and bkg normalizations
+    l = 'n_exp_binJJ_%s_proc_model_signal_mjj' % label
+    sig_norm_var = workspace.obj(l)
+    sig_norm_val = sig_norm_var.getValV() * rescale
+    sig_norm = ROOT.RooFit.Normalization(sig_norm_val, ROOT.RooAbsReal.NumEvent)
+
+
+    l = 'shapeBkg_model_qcd_mjj_JJ_%s__norm' % label
+    bkg_norm_var = workspace.obj(l)
+    bkg_norm_val = bkg_norm_var.getValV() * rescale
+    bkg_norm = ROOT.RooFit.Normalization(bkg_norm_val, ROOT.RooAbsReal.NumEvent)
+
 
     
-    fres = model.fitTo(data_all,ROOT.RooFit.SumW2Error(1),ROOT.RooFit.Minos(0),ROOT.RooFit.Verbose(0),ROOT.RooFit.Save(1),ROOT.RooFit.NumCPU(8)) 
+    fres = model.fitTo(data_all,ROOT.RooFit.SumW2Error(1),ROOT.RooFit.Minos(0),ROOT.RooFit.Verbose(0),ROOT.RooFit.Save(1),ROOT.RooFit.NumCPU(8), ROOT.RooFit.Minimizer("Minuit2")) 
     fres.Print()
     
     frame = var.frame()
@@ -685,8 +821,10 @@ def checkSBFitFinal(filename,label,roobins,plotname, nPars, plot_dir):
     model_sb_ShapeBpS_1cat.plotOn(frame,ROOT.RooFit.VisualizeError(fres,1, linear_errors),ROOT.RooFit.FillColor(ROOT.kRed-7),ROOT.RooFit.LineColor(ROOT.kRed-7),ROOT.RooFit.Name(fres.GetName()),
             fit_norm)
     model_sb_ShapeBpS_1cat.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed+1),ROOT.RooFit.Name("model_s"), fit_norm)
-    model_sb_ShapeSig_1cat.plotOn(frame,ROOT.RooFit.Components("shapeSig_model_signal_mjj_JJ_%s"%label), ROOT.RooFit.LineColor(ROOT.kBlue),ROOT.RooFit.Name("Signal"), fit_norm)
-    model_bonly_1cat.plotOn(frame,ROOT.RooFit.Components("shapeBkg_model_qcd_mjj_JJ_%s"%label), ROOT.RooFit.LineColor(ROOT.kMagenta + 3),ROOT.RooFit.Name("Background"), fit_norm)
+    model_sb_ShapeSig_1cat.plotOn(frame,ROOT.RooFit.Components("shapeSig_model_signal_mjj_JJ_%s"%label), ROOT.RooFit.LineColor(ROOT.kBlue),ROOT.RooFit.Name("Signal"), sig_norm)
+    model_bonly_1cat.plotOn(frame,ROOT.RooFit.Components("shapeBkg_model_qcd_mjj_JJ_%s"%label), ROOT.RooFit.LineColor(ROOT.kMagenta + 3),ROOT.RooFit.Name("Background"), bkg_norm)
+
+
 
     #model_qcd.plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kGreen-7),ROOT.RooFit.LineColor(ROOT.kGreen-7), ROOT.RooFit.Name("Background"))
     #model_qcd.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed+1),ROOT.RooFit.Name("Background"))
@@ -717,3 +855,4 @@ def checkSBFitFinal(filename,label,roobins,plotname, nPars, plot_dir):
 
     print "chi2,ndof are", chi2, ndof
     return chi2, ndof
+
